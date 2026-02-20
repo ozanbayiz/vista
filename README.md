@@ -1,8 +1,8 @@
-# IDARVE
+# VISTA
 
-Investigating Demographic Attribute Representation in Vision Encoders.
+Vision Intersectional Sparse Trait Analysis.
 
-IDARVE trains sparse autoencoders (SAEs) on vision encoder latents and uses linear probes to measure how demographic attributes (age, gender, race) are encoded in the learned sparse features. The project supports multiple modern SAE architectures and provides evaluation tools for feature-demographic alignment, ablation studies, and intersectional analysis.
+VISTA trains sparse autoencoders (SAEs) on vision encoder latents and uses linear probes to measure how demographic attributes (age, gender, race) are encoded in the learned sparse features. The project supports multiple modern SAE architectures and provides evaluation tools for feature-demographic alignment, ablation studies, and intersectional analysis.
 
 ## Project Structure
 
