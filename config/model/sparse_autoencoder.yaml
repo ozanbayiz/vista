@@ -1,3 +1,2 @@
-_target_: src.models.sparse_autoencoder.SparseAutoencoder
-input_size: 768
+input_size: 1024
 hidden_size: 4096

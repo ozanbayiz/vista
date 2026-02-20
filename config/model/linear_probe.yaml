@@ -1,4 +1,4 @@
-_target_: src.models.linear_probes.LinearProbe
+input_size: 1024
 age_classes: 9
 gender_classes: 2
-race_classes: 7 
+race_classes: 7

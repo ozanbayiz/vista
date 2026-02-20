@@ -1,504 +1,973 @@
-import torch
-import h5py
-import hdf5plugin # For Zstandard compression
-import numpy as np
-import pandas as pd # For stratification
-import random # For shuffling indices
-from tqdm.auto import tqdm
-from PIL import Image
+"""Extract vision-encoder latents from VLMs and save to HDF5.
+
+Supports five VLMs (PaliGemma 2, SigLIP 2, DINOv3, Qwen3-VL, InternVL3.5)
+and two datasets (ImageNet for SAE training, FairFace for demographic analysis).
+
+Usage:
+    python -m src.setup_datasets.ve_latent_dataset \
+        --model-name paligemma2 \
+        --dataset fairface \
+        --output data/fairface_paligemma2.hdf5 \
+        --batch-size 64
+"""
+
+from __future__ import annotations
+
+import abc
+import argparse
+import logging
 import sys
-import os
-from typing import Dict, List, Tuple, Optional
-from functools import partial # For cleaner collate_fn binding
+from pathlib import Path
+from typing import Any
 
-# Set environment variable to suppress the tokenizer parallelism warning
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
+import h5py
+import hdf5plugin  # noqa: F401
+import numpy as np
+import torch
+from PIL import Image
+from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 
-# Ensure the src directory is in the Python path
-script_dir = os.path.dirname(os.path.abspath(__file__))
-src_dir = os.path.join(script_dir, '..', 'src')
-if src_dir not in sys.path:
-    sys.path.insert(0, src_dir)
+log = logging.getLogger(__name__)
 
-# Now import from src
-try:
-    from src.deconstructed_florence import DeconstructedFlorence2, FlorenceVisionEncoder
-    from transformers import AutoProcessor
-    from datasets import load_dataset, Dataset, Features, Value, Image as HFImage, ClassLabel
-except ImportError as e:
-    print(f"Error importing necessary modules: {e}", file=sys.stderr)
-    print(f"Attempted to import from: {src_dir}", file=sys.stderr)
-    print("Ensure 'src', 'transformers', 'datasets', 'pandas', 'hdf5plugin' are installed.", file=sys.stderr)
-    sys.exit(1)
-
-# --- Configuration ---
-DATASET_NAME = 'HuggingFaceM4/FairFace'
-DATASET_CONFIG = '0.25' # Use the smaller 0.25 version of FairFace
-IMAGE_COLUMN = 'image'
-LABEL_COLUMNS_TO_STORE = ['age', 'gender', 'race'] # Specific labels for FairFace to keep
-MODEL_ID = "microsoft/Florence-2-base"
-HDF5_OUTPUT_PATH = "data/ve_latent_fairface.hdf5" # Specific output name for subset
-BATCH_SIZE = 64          # Adjust based on GPU memory
-FORCE_CPU = False        # Set to True to force CPU usage
-NUM_WORKERS = 4          # Number of DataLoader workers
-ZSTD_CLEVEL = 3          # Zstandard Compression level (1-22, higher is smaller but slower)
-
-# --- Subsetting Configuration ---
-STRATIFY_COLUMNS = ['race', 'gender', 'age'] # Columns to stratify on (e.g., ['race'], ['race', 'gender'])
-TARGET_SAMPLES_PER_STRATUM_TRAIN = 100 # Desired train samples per stratum combination
-TARGET_SAMPLES_PER_STRATUM_VAL = 25   # Desired validation samples per stratum combination
-RANDOM_SEED = 42         # For reproducible sampling
-
-# --- Setup Device and Dtype ---
-if FORCE_CPU:
-    DEVICE = 'cpu'
-else:
-    DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-# Compute Dtype (Model runs with this)
-COMPUTE_DTYPE = torch.bfloat16 if DEVICE == 'cuda' and torch.cuda.is_bf16_supported() else torch.float32
-# Storage Dtypes (HDF5 stores these - float16 for encoded, uint8 for labels)
-FLOAT_STORAGE_DTYPE = np.float16
-LABEL_STORAGE_DTYPE = np.uint8 # Assuming < 256 classes for age, gender, race in FairFace
-print(f"Using device: {DEVICE}, compute dtype: {COMPUTE_DTYPE}")
-print(f"Storage dtypes: float={FLOAT_STORAGE_DTYPE}, label={LABEL_STORAGE_DTYPE}")
-print(f"Using Zstandard compression level: {ZSTD_CLEVEL}")
-PIN_MEMORY = (DEVICE == 'cuda')
-random.seed(RANDOM_SEED) # Set random seed for shuffling
-
-# --- Helper Functions ---
-
-def check_columns(dataset_features: Features, image_col: str, label_cols: List[str], stratify_cols: List[str]):
-    """Validate required image, label, and stratification columns exist."""
-    required_cols = set([image_col] + label_cols + stratify_cols)
-    available_cols = set(dataset_features.keys())
-    missing_cols = required_cols - available_cols
-
-    if missing_cols:
-        raise ValueError(f"Missing required columns: {missing_cols}. Available: {list(available_cols)}")
-
-    if not isinstance(dataset_features[image_col], HFImage):
-         print(f"Warning: Image column '{image_col}' is not of type datasets.Image. Ensure it contains loadable PIL images.", file=sys.stderr)
-
-    for label_col in label_cols + stratify_cols: # Check labels and stratify cols typing
-        # FairFace uses ClassLabel, which is expected
-        if not isinstance(dataset_features[label_col], ClassLabel):
-             print(f"Warning: Column '{label_col}' is not of type datasets.ClassLabel. Ensure it's suitable for stratification/storage.", file=sys.stderr)
+ZSTD_LEVEL = 3
+STORAGE_DTYPE = np.float16
 
 
-def create_stratified_subset(dataset: Dataset, stratify_cols: List[str], target_per_stratum: int, random_seed: int) -> Tuple[Dataset, List[int]]:
-    """Creates a stratified subset of the dataset using pandas, returns subset and indices."""
-    print(f"Creating stratified subset based on {stratify_cols}, target/stratum={target_per_stratum}...")
-    if not stratify_cols:
-        raise ValueError("Stratification columns must be specified.")
+# ---------------------------------------------------------------------------
+# Abstract VE adapter
+# ---------------------------------------------------------------------------
 
-    try:
-        df = dataset.to_pandas()
-    except Exception as e:
-         print(f"Error converting dataset split to Pandas DataFrame: {e}", file=sys.stderr)
-         print("Ensure the dataset structure is compatible with Pandas conversion.", file=sys.stderr)
-         raise
 
-    # Ensure stratify columns are suitable type (often categorical/int from ClassLabel)
-    for col in stratify_cols:
-        if not pd.api.types.is_integer_dtype(df[col]) and not pd.api.types.is_categorical_dtype(df[col]):
-            print(f"Warning: Stratification column '{col}' has dtype {df[col].dtype}. Converting to category for grouping.", file=sys.stderr)
+class VEAdapter(abc.ABC):
+    """Thin adapter: loads a VLM vision encoder and preprocesses images."""
+
+    # When set, encode() should return activations from this layer index
+    # instead of the final layer. None means final layer (default).
+    _extract_layer: int | None = None
+
+    @abc.abstractmethod
+    def load(self, device: torch.device) -> None:
+        """Load model and processor onto *device*."""
+
+    @abc.abstractmethod
+    def preprocess(self, images: list[Image.Image]) -> dict[str, torch.Tensor]:
+        """Return tensors ready for the vision encoder."""
+
+    @abc.abstractmethod
+    @torch.no_grad()
+    def encode(self, preprocessed: dict[str, torch.Tensor]) -> torch.Tensor:
+        """Return patch activations: ``(batch, seq_len, hidden)``.
+
+        If ``_extract_layer`` is set, return that layer's hidden states
+        instead of the final layer output.
+        """
+
+    @property
+    @abc.abstractmethod
+    def hidden_size(self) -> int:
+        """Dimensionality of the VE output."""
+
+
+# ---------------------------------------------------------------------------
+# Concrete adapters
+# ---------------------------------------------------------------------------
+
+
+class PaliGemma2Adapter(VEAdapter):
+    """PaliGemma 2 3B -- extracts SigLIP VE embeddings.
+
+    Falls back to a community bf16 copy if the official gated repo
+    is inaccessible.
+    """
+
+    MODEL_ID = "google/paligemma2-3b-pt-448"
+    _FALLBACK_ID = "mlx-community/paligemma2-3b-mix-448-bf16"
+
+    def __init__(self) -> None:
+        self._model: Any = None
+        self._processor: Any = None
+        self._device: torch.device = torch.device("cpu")
+        self._loaded_id: str = ""
+
+    def load(self, device: torch.device) -> None:
+        from transformers import PaliGemmaForConditionalGeneration, AutoImageProcessor
+
+        self._device = device
+        for model_id in (self.MODEL_ID, self._FALLBACK_ID):
             try:
-                df[col] = df[col].astype('category')
+                self._processor = AutoImageProcessor.from_pretrained(model_id)
+                full_model = PaliGemmaForConditionalGeneration.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.float16,
+                    ignore_mismatched_sizes=True,
+                )
+                # Vision tower location varies: top-level or nested in .model
+                if hasattr(full_model, "vision_tower"):
+                    self._model = full_model.vision_tower.to(device).eval()
+                else:
+                    self._model = full_model.model.vision_tower.to(device).eval()
+                del full_model
+                self._loaded_id = model_id
+                log.info("Loaded PaliGemma 2 vision tower (%s)", model_id)
+                return
+            except (OSError, Exception) as e:
+                log.warning("Cannot load %s: %s", model_id, e)
+        raise RuntimeError("Could not load any PaliGemma 2 variant")
+
+    def preprocess(self, images: list[Image.Image]) -> dict[str, torch.Tensor]:
+        inputs = self._processor(images=images, return_tensors="pt")
+        return {
+            "pixel_values": inputs["pixel_values"].to(
+                self._device, dtype=torch.float16
+            )
+        }
+
+    @torch.no_grad()
+    def encode(self, preprocessed: dict[str, torch.Tensor]) -> torch.Tensor:
+        out = self._model(
+            preprocessed["pixel_values"], output_hidden_states=True
+        )
+        if self._extract_layer is not None:
+            return out.hidden_states[self._extract_layer].float()
+        return out.last_hidden_state.float()
+
+    @property
+    def hidden_size(self) -> int:
+        return 1152
+
+
+class SigLIP2Adapter(VEAdapter):
+    """SigLIP 2 So400m standalone encoder."""
+
+    MODEL_ID = "google/siglip2-so400m-patch14-384"
+
+    def __init__(self) -> None:
+        self._model: Any = None
+        self._processor: Any = None
+        self._device: torch.device = torch.device("cpu")
+
+    def load(self, device: torch.device) -> None:
+        from transformers import AutoModel, AutoImageProcessor
+
+        self._device = device
+        self._processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
+        self._model = (
+            AutoModel.from_pretrained(self.MODEL_ID, torch_dtype=torch.float16)
+            .to(device)
+            .eval()
+        )
+        log.info("Loaded SigLIP 2 (%s)", self.MODEL_ID)
+
+    def preprocess(self, images: list[Image.Image]) -> dict[str, torch.Tensor]:
+        inputs = self._processor(images=images, return_tensors="pt")
+        return {
+            "pixel_values": inputs["pixel_values"].to(
+                self._device, dtype=torch.float16
+            )
+        }
+
+    @torch.no_grad()
+    def encode(self, preprocessed: dict[str, torch.Tensor]) -> torch.Tensor:
+        out = self._model.vision_model(
+            preprocessed["pixel_values"], output_hidden_states=True
+        )
+        return out.last_hidden_state.float()
+
+    @property
+    def hidden_size(self) -> int:
+        return 1152
+
+
+class DINOv3Adapter(VEAdapter):
+    """DINOv2/v3 ViT-L/14 self-supervised encoder.
+
+    Falls back to DINOv2-large if DINOv3 is gated/inaccessible.
+    """
+
+    MODEL_ID = "facebook/dinov2-large"
+    _PREFERRED_ID = "facebook/dinov3-vitl16-pretrain-lvd1689m"
+
+    def __init__(self) -> None:
+        self._model: Any = None
+        self._processor: Any = None
+        self._device: torch.device = torch.device("cpu")
+
+    def load(self, device: torch.device) -> None:
+        from transformers import AutoModel, AutoImageProcessor
+
+        self._device = device
+        # Try DINOv3 first, fall back to DINOv2-large if gated
+        model_id = self.MODEL_ID
+        try:
+            self._processor = AutoImageProcessor.from_pretrained(self._PREFERRED_ID)
+            self._model = (
+                AutoModel.from_pretrained(self._PREFERRED_ID, torch_dtype=torch.float16)
+                .to(device)
+                .eval()
+            )
+            model_id = self._PREFERRED_ID
+        except (OSError, Exception) as e:
+            log.warning("DINOv3 unavailable (%s), falling back to %s", e, self.MODEL_ID)
+            self._processor = AutoImageProcessor.from_pretrained(self.MODEL_ID)
+            self._model = (
+                AutoModel.from_pretrained(self.MODEL_ID, torch_dtype=torch.float16)
+                .to(device)
+                .eval()
+            )
+        log.info("Loaded DINO encoder (%s)", model_id)
+
+    def preprocess(self, images: list[Image.Image]) -> dict[str, torch.Tensor]:
+        inputs = self._processor(images=images, return_tensors="pt")
+        return {
+            "pixel_values": inputs["pixel_values"].to(
+                self._device, dtype=torch.float16
+            )
+        }
+
+    @torch.no_grad()
+    def encode(self, preprocessed: dict[str, torch.Tensor]) -> torch.Tensor:
+        out = self._model(
+            preprocessed["pixel_values"], output_hidden_states=True
+        )
+        return out.last_hidden_state.float()
+
+    @property
+    def hidden_size(self) -> int:
+        return 1024
+
+
+class Qwen3VLAdapter(VEAdapter):
+    """Qwen3-VL-2B -- extracts vision encoder embeddings."""
+
+    MODEL_ID = "/scratch/current/ozanbayiz/models/Qwen3-VL-2B-Instruct"
+
+    def __init__(self) -> None:
+        self._model: Any = None
+        self._processor: Any = None
+        self._device: torch.device = torch.device("cpu")
+
+    def load(self, device: torch.device) -> None:
+        from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
+
+        self._device = device
+        self._processor = AutoProcessor.from_pretrained(self.MODEL_ID)
+        # Force fixed resolution: 448x448 = 200704 pixels
+        # This ensures all images produce the same number of tokens
+        fixed_pixels = 448 * 448
+        self._processor.image_processor.min_pixels = fixed_pixels
+        self._processor.image_processor.max_pixels = fixed_pixels
+        full_model = Qwen3VLForConditionalGeneration.from_pretrained(
+            self.MODEL_ID,
+            torch_dtype=torch.float16,
+        )
+        # In Qwen3VL, visual encoder is at model.model.visual
+        self._model = full_model.model.visual.to(device).eval()
+        del full_model.model.language_model
+        del full_model.lm_head
+        log.info("Loaded Qwen3-VL visual encoder (%s)", self.MODEL_ID)
+
+    def preprocess(self, images: list[Image.Image]) -> dict[str, torch.Tensor]:
+        # Force all images to exact 448x448 square to guarantee consistent
+        # token counts across all images (different aspect ratios would
+        # otherwise produce different grid configurations in Qwen3-VL).
+        resized = [img.convert("RGB").resize((448, 448)) for img in images]
+        inputs = self._processor.image_processor(
+            images=resized, return_tensors="pt"
+        )
+        return {k: v.to(self._device) for k, v in inputs.items()}
+
+    @torch.no_grad()
+    def encode(self, preprocessed: dict[str, torch.Tensor]) -> torch.Tensor:
+        pixel_values = preprocessed["pixel_values"].to(dtype=torch.float16)
+        grid_thw = preprocessed["image_grid_thw"]
+        out = self._model(pixel_values, grid_thw=grid_thw)
+        # Returns BaseModelOutputWithDeepstackFeatures.
+        # Use pooler_output which is the post-PatchMerger output
+        # (total_merged_tokens, out_hidden_size=2048) -- this is what feeds
+        # into the language model and what the SAE should model.
+        hidden = out.pooler_output.float()
+        total_tokens = hidden.shape[0]
+        n_images = grid_thw.shape[0]
+        d = hidden.shape[-1]
+
+        # Check if tokens divide evenly among images
+        if total_tokens % n_images == 0:
+            tokens_per_image = total_tokens // n_images
+            return hidden.view(n_images, tokens_per_image, d)
+
+        # Uneven: use stored target seq_len if available (from _probe_seq_len),
+        # otherwise use the average (rounded up)
+        target_len = getattr(self, "_target_seq_len", -(-total_tokens // n_images))
+        result = hidden.new_zeros(n_images, target_len, d)
+        # Distribute tokens evenly, truncating/padding as needed
+        base = total_tokens // n_images
+        offset = 0
+        for i in range(n_images):
+            # Last image gets remaining tokens
+            ntok = total_tokens - offset if i == n_images - 1 else base
+            use = min(ntok, target_len)
+            result[i, :use, :] = hidden[offset : offset + use]
+            offset += ntok
+        return result
+
+    @property
+    def hidden_size(self) -> int:
+        return 2048  # Qwen3-VL-2B visual encoder out_hidden_size after PatchMerger
+
+
+class InternVL35Adapter(VEAdapter):
+    """InternVL3.5-2B -- extracts InternViT-300M embeddings."""
+
+    MODEL_ID = "OpenGVLab/InternVL3_5-2B"
+
+    def __init__(self) -> None:
+        self._model: Any = None
+        self._processor: Any = None
+        self._device: torch.device = torch.device("cpu")
+
+    def load(self, device: torch.device) -> None:
+        from transformers import AutoImageProcessor, AutoConfig
+
+        self._device = device
+        self._processor = AutoImageProcessor.from_pretrained(
+            self.MODEL_ID, trust_remote_code=True
+        )
+
+        # Load vision model directly to avoid full InternVLChatModel
+        # incompatibilities with transformers 5.x
+        config = AutoConfig.from_pretrained(self.MODEL_ID, trust_remote_code=True)
+        vision_config = config.vision_config
+
+        # Use transformers' own dynamic import to get InternVisionModel
+        # (avoids loading full InternVLChatModel which has compat issues with transformers 5.x)
+        from transformers.dynamic_module_utils import get_class_from_dynamic_module
+        InternVisionModel = get_class_from_dynamic_module(
+            "modeling_intern_vit.InternVisionModel",
+            self.MODEL_ID,
+        )
+
+        # Create vision model on CPU
+        vision_model = InternVisionModel(vision_config)
+
+        # Load only vision model weights from the full checkpoint
+        from huggingface_hub import hf_hub_download
+        import safetensors.torch
+
+        # Try sharded index first, then single file
+        state_dict = {}
+        try:
+            index_path = hf_hub_download(
+                self.MODEL_ID, "model.safetensors.index.json"
+            )
+            import json
+            with open(index_path) as f:
+                index = json.load(f)
+            vision_shards = set()
+            for key, shard in index["weight_map"].items():
+                if key.startswith("vision_model."):
+                    vision_shards.add(shard)
+            for shard_name in vision_shards:
+                shard_path = hf_hub_download(self.MODEL_ID, shard_name)
+                shard_dict = safetensors.torch.load_file(shard_path)
+                for k, v in shard_dict.items():
+                    if k.startswith("vision_model."):
+                        state_dict[k.replace("vision_model.", "")] = v
+        except Exception:
+            # Single safetensors file (no index)
+            try:
+                st_path = hf_hub_download(self.MODEL_ID, "model.safetensors")
+                all_weights = safetensors.torch.load_file(st_path)
+                state_dict = {
+                    k.replace("vision_model.", ""): v
+                    for k, v in all_weights.items()
+                    if k.startswith("vision_model.")
+                }
+                del all_weights
             except Exception as e:
-                 print(f"Failed to convert column '{col}' to category: {e}", file=sys.stderr)
+                raise RuntimeError(
+                    f"Could not load vision weights for {self.MODEL_ID}"
+                ) from e
+
+        vision_model.load_state_dict(state_dict, strict=False)
+        self._model = vision_model.half().to(device).eval()
+        del state_dict
+        log.info("Loaded InternVL3.5 vision model (%s)", self.MODEL_ID)
+
+    def preprocess(self, images: list[Image.Image]) -> dict[str, torch.Tensor]:
+        inputs = self._processor(images=images, return_tensors="pt")
+        return {
+            "pixel_values": inputs["pixel_values"].to(
+                self._device, dtype=torch.float16
+            )
+        }
+
+    @torch.no_grad()
+    def encode(self, preprocessed: dict[str, torch.Tensor]) -> torch.Tensor:
+        out = self._model(
+            preprocessed["pixel_values"], output_hidden_states=True
+        )
+        return out.last_hidden_state.float()
+
+    @property
+    def hidden_size(self) -> int:
+        return 1024
 
 
-    grouped = df.groupby(stratify_cols, observed=False) # observed=False needed for categories sometimes
-    sampled_indices_list = [] # Renamed to avoid confusion with pandas index object
+class Qwen2VLAdapter(VEAdapter):
+    """Qwen2-VL-2B -- extracts vision encoder embeddings.
 
-    print(f"  Found {grouped.ngroups} strata combinations.")
-    num_sampled_total = 0
-    # Use tqdm on grouped.groups.items() for progress bar with names if needed, or keep simple loop
-    for name, group_df in tqdm(grouped, desc="Sampling strata", total=grouped.ngroups): # group is now group_df
-        n_available = len(group_df)
-        n_samples = min(target_per_stratum, n_available)
-        if n_samples > 0:
-            # Sample indices directly from the group's index
-            sampled_group_indices = group_df.sample(n=n_samples, random_state=random_seed).index
-            sampled_indices_list.extend(sampled_group_indices.tolist()) # Add indices to the list
-            num_sampled_total += n_samples
-
-    print(f"  Total samples selected before shuffling: {len(sampled_indices_list)}")
-
-    if not sampled_indices_list:
-         print("Warning: No samples were selected after stratification.", file=sys.stderr)
-         # Return an empty dataset and empty list
-         return dataset.select([]), []
-
-
-    # Shuffle the final indices to mix strata for DataLoader
-    # Make a copy before shuffling if you need the original order for some reason
-    final_shuffled_indices = sampled_indices_list.copy()
-    random.shuffle(final_shuffled_indices)
-
-    # Select the subset from the original dataset using the shuffled list of indices
-    subset_dataset = dataset.select(final_shuffled_indices)
-    print(f"  Final subset size: {len(subset_dataset)}")
-    # Return the subset AND the shuffled list of indices used to create it
-    return subset_dataset, final_shuffled_indices
-
-
-def get_shapes_and_dtypes(
-    processor: AutoProcessor,
-    vision_encoder: FlorenceVisionEncoder,
-    sample_image: Image.Image,
-    label_columns: List[str], # Only the labels to be stored
-    device: str,
-    compute_dtype: torch.dtype
-) -> Tuple[Tuple, np.dtype, Dict[str, np.dtype]]: # Returns only encoded shape/dtype and label dtypes
-    """Process one sample to determine shapes and storage dtypes for HDF5 (only encoded)."""
-    dummy_text = "<DUMMY>" # Placeholder text for processor
-    inputs = processor(text=dummy_text, images=sample_image, return_tensors="pt")
-    pixel_values_sample = inputs['pixel_values'].to(device=device, dtype=compute_dtype)
-
-    with torch.no_grad():
-        encoded_features_sample = vision_encoder(pixel_values_sample)
-
-    encoded_shape = encoded_features_sample.shape # Includes batch dim 1
-
-    # Determine storage dtypes (float16 for encoded, uint8 for labels)
-    encoded_storage_dtype = FLOAT_STORAGE_DTYPE
-    label_storage_dtypes = {label_col: LABEL_STORAGE_DTYPE for label_col in label_columns}
-
-    # Return shapes *without* the sample batch dimension
-    encoded_shape_tpl = tuple(encoded_shape[1:])
-
-    # Return only encoded shape/dtype and label dtypes
-    return encoded_shape_tpl, encoded_storage_dtype, label_storage_dtypes
-
-# Define the custom collate function for FairFace
-def collate_batch(batch_list: List[Dict], processor: AutoProcessor, image_col: str, label_cols: List[str]) -> Dict:
+    Uses ``Qwen2VLForConditionalGeneration`` from HF Transformers, extracts
+    ``model.visual`` (a ``Qwen2VisionTransformerPretrainedModel``).  The visual
+    model output is a flat ``(total_tokens, hidden_dim)`` tensor; we reshape to
+    ``(batch, tokens_per_image, hidden_dim)`` assuming fixed image resolution.
     """
-    Collates FairFace samples: processes images and packages multiple labels to store.
-    """
-    images = [item[image_col] for item in batch_list]
-    # Create a dictionary of label lists FOR LABELS TO STORE
-    labels_dict = {label_col: [item[label_col] for item in batch_list] for label_col in label_cols}
 
-    dummy_texts = ["<IGNORE>" for _ in images]
+    MODEL_ID = "Qwen/Qwen2-VL-2B-Instruct"
 
-    try:
-        # Preprocess images
-        inputs = processor(text=dummy_texts, images=images, return_tensors="pt")
-        pixel_values = inputs['pixel_values']
-    except Exception as e:
-        # Handle potential errors during image loading/processing within a batch
-        print(f"\nError in collate_fn processing images: {e}", file=sys.stderr)
-        # Attempt to identify problematic items (optional, can be slow)
-        # for i, item in enumerate(batch_list):
-        #     try:
-        #         processor(text="<IGNORE>", images=item[image_col], return_tensors="pt")
-        #     except Exception as item_e:
-        #         print(f"  -> Problematic item index {i}: {item}. Error: {item_e}", file=sys.stderr)
+    def __init__(self) -> None:
+        self._model: Any = None
+        self._processor: Any = None
+        self._device: torch.device = torch.device("cpu")
 
-        # Return empty tensors or handle as appropriate
-        # Returning empty signifies batch failure upstream
-        return {'pixel_values': torch.empty(0), 'labels': {label_col: torch.empty(0, dtype=torch.long) for label_col in label_cols}}
+    def load(self, device: torch.device) -> None:
+        from transformers import AutoProcessor, Qwen2VLForConditionalGeneration
+
+        self._device = device
+        self._processor = AutoProcessor.from_pretrained(self.MODEL_ID)
+        # Force fixed resolution: 224x224 to ensure uniform token counts.
+        # Qwen2-VL: 224px / 14 patch = 16x16 = 256 patches, merged 2x2 → 64 tokens.
+        fixed_pixels = 224 * 224
+        self._processor.image_processor.min_pixels = fixed_pixels
+        self._processor.image_processor.max_pixels = fixed_pixels
+
+        full_model = Qwen2VLForConditionalGeneration.from_pretrained(
+            self.MODEL_ID,
+            torch_dtype=torch.float16,
+        )
+        # Extract only the visual encoder, discard LLM to save memory
+        self._model = full_model.visual.to(device).eval()
+        del full_model.model
+        del full_model.lm_head
+        log.info("Loaded Qwen2-VL visual encoder (%s)", self.MODEL_ID)
+
+    def preprocess(self, images: list[Image.Image]) -> dict[str, torch.Tensor]:
+        # Force all images to 224x224 for consistent token counts
+        resized = [img.convert("RGB").resize((224, 224)) for img in images]
+        inputs = self._processor.image_processor(
+            images=resized, return_tensors="pt",
+        )
+        return {k: v.to(self._device) for k, v in inputs.items()}
+
+    @torch.no_grad()
+    def encode(self, preprocessed: dict[str, torch.Tensor]) -> torch.Tensor:
+        pixel_values = preprocessed["pixel_values"].to(dtype=torch.float16)
+        grid_thw = preprocessed["image_grid_thw"]
+        # Qwen2VisionTransformerPretrainedModel.forward returns a raw tensor
+        hidden = self._model(pixel_values, grid_thw=grid_thw).float()
+        total_tokens = hidden.shape[0]
+        n_images = grid_thw.shape[0]
+        d = hidden.shape[-1]
+
+        if total_tokens % n_images == 0:
+            tokens_per_image = total_tokens // n_images
+            return hidden.view(n_images, tokens_per_image, d)
+
+        # Fallback: pad/truncate (shouldn't happen with fixed resolution)
+        target_len = -(-total_tokens // n_images)  # ceil division
+        result = hidden.new_zeros(n_images, target_len, d)
+        base = total_tokens // n_images
+        offset = 0
+        for i in range(n_images):
+            ntok = total_tokens - offset if i == n_images - 1 else base
+            use = min(ntok, target_len)
+            result[i, :use, :] = hidden[offset : offset + use]
+            offset += ntok
+        return result
+
+    @property
+    def hidden_size(self) -> int:
+        return 1536
 
 
-    # Convert each label list (for stored labels) to a tensor
-    labels_tensor_dict = {
-        label_col: torch.tensor(labels, dtype=torch.long)
-        for label_col, labels in labels_dict.items()
+ADAPTERS: dict[str, type[VEAdapter]] = {
+    "paligemma2": PaliGemma2Adapter,
+    "siglip2": SigLIP2Adapter,
+    "dinov3": DINOv3Adapter,
+    "qwen3vl": Qwen3VLAdapter,
+    "qwen2vl": Qwen2VLAdapter,
+    "internvl35": InternVL35Adapter,
+}
+
+
+# ---------------------------------------------------------------------------
+# Dataset wrappers (return PIL images + metadata)
+# ---------------------------------------------------------------------------
+
+
+class FairFaceImageDataset(Dataset):
+    """Wraps HuggingFace FairFace split, returns PIL images and label indices."""
+
+    RACE_MAP = {
+        "White": 0,
+        "Black": 1,
+        "Latino_Hispanic": 2,
+        "East Asian": 3,
+        "Southeast Asian": 4,
+        "Indian": 5,
+        "Middle Eastern": 6,
+    }
+    GENDER_MAP = {"Male": 0, "Female": 1}
+    AGE_MAP = {
+        "0-2": 0,
+        "3-9": 1,
+        "10-19": 2,
+        "20-29": 3,
+        "30-39": 4,
+        "40-49": 5,
+        "50-59": 6,
+        "60-69": 7,
+        "more than 70": 8,
     }
 
-    # Return pixel values and the dictionary of label tensors to be stored
-    return {'pixel_values': pixel_values, 'labels': labels_tensor_dict}
+    _LABEL_MAPS: dict[str, dict[str, int]] = {
+        "age": AGE_MAP,
+        "gender": GENDER_MAP,
+        "race": RACE_MAP,
+    }
+
+    def __init__(self, hf_dataset: Any) -> None:
+        self._ds = hf_dataset
+        # HuggingFace ClassLabel features return integers, not strings.
+        # Detect this once so __getitem__ handles both formats correctly.
+        sample = self._ds[0]
+        self._int_labels: bool = isinstance(sample["age"], (int, np.integer))
+        # Remapping tables: HF int -> our int. Identity if ordering matches.
+        self._remap: dict[str, np.ndarray | None] = {"age": None, "gender": None, "race": None}
+        if self._int_labels:
+            self._build_remap()
+            log.info("FairFace labels are integer ClassLabels (remapping built).")
+        else:
+            log.info("FairFace labels are strings; using string-to-int maps.")
+
+    def _build_remap(self) -> None:
+        """Build HF-int -> our-int remapping arrays for each label column."""
+        features = getattr(self._ds, "features", None)
+        if features is None:
+            return
+        for key, expected_map in self._LABEL_MAPS.items():
+            feat = features.get(key)
+            if feat is None or not hasattr(feat, "names"):
+                continue
+            hf_names = feat.names  # e.g. ['East Asian', 'Indian', ...]
+            # Build remap: remap[hf_idx] = our_idx
+            remap = np.arange(len(hf_names), dtype=np.int64)
+            needs_remap = False
+            for hf_idx, name in enumerate(hf_names):
+                our_idx = expected_map.get(name)
+                if our_idx is None:
+                    log.warning("Unknown label '%s' for '%s'; keeping HF index %d", name, key, hf_idx)
+                    continue
+                remap[hf_idx] = our_idx
+                if hf_idx != our_idx:
+                    needs_remap = True
+            if needs_remap:
+                log.info("Label '%s' needs remapping: HF order %s", key, hf_names)
+                self._remap[key] = remap
+
+    def __len__(self) -> int:
+        return len(self._ds)
+
+    def __getitem__(self, idx: int) -> dict:
+        row = self._ds[idx]
+        img = row["image"]
+        if not isinstance(img, Image.Image):
+            img = Image.open(img).convert("RGB")
+        else:
+            img = img.convert("RGB")
+
+        if self._int_labels:
+            # Apply remapping if HF ordering differs from ours
+            age = int(self._remap["age"][row["age"]]) if self._remap["age"] is not None else row["age"]
+            gender = int(self._remap["gender"][row["gender"]]) if self._remap["gender"] is not None else row["gender"]
+            race = int(self._remap["race"][row["race"]]) if self._remap["race"] is not None else row["race"]
+            return {
+                "image": img,
+                "age": age,
+                "gender": gender,
+                "race": race,
+            }
+
+        return {
+            "image": img,
+            "age": self.AGE_MAP[row["age"]],
+            "gender": self.GENDER_MAP[row["gender"]],
+            "race": self.RACE_MAP[row["race"]],
+        }
 
 
-def process_and_store_split(
-    dataset_split: Dataset, # This will be the SUBSET
-    hdf5_group: h5py.Group,
-    processor: AutoProcessor,
-    vision_encoder: FlorenceVisionEncoder,
-    image_col: str,
-    label_cols_to_store: List[str], # Only store these labels
+class ImageNetImageDataset(Dataset):
+    """Wraps HuggingFace ImageNet, returns PIL images and class labels."""
+
+    def __init__(self, hf_dataset: Any) -> None:
+        self._ds = hf_dataset
+
+    def __len__(self) -> int:
+        return len(self._ds)
+
+    def __getitem__(self, idx: int) -> dict:
+        row = self._ds[idx]
+        img = row["image"]
+        if not isinstance(img, Image.Image):
+            img = Image.open(img).convert("RGB")
+        else:
+            img = img.convert("RGB")
+        return {"image": img, "label": row["label"]}
+
+
+def _pil_collate(batch: list[dict]) -> dict[str, Any]:
+    """Collate that keeps PIL images as a list (no tensor stacking)."""
+    return {k: [b[k] for b in batch] for k in batch[0]}
+
+
+# ---------------------------------------------------------------------------
+# HDF5 helpers
+# ---------------------------------------------------------------------------
+
+
+def _create_hdf5_datasets(
+    group: h5py.Group,
+    n_samples: int,
+    seq_len: int,
+    hidden: int,
     batch_size: int,
-    num_workers: int,
-    pin_memory: bool,
-    device: str,
-    compute_dtype: torch.dtype,
-    split_name: str
-):
-    """Processes a dataset SUBSET split and stores encoded features and labels in the HDF5 group."""
-    print(f"\nProcessing split: {split_name}")
-    current_offset = 0
+    label_names: list[str],
+) -> tuple[h5py.Dataset, dict[str, h5py.Dataset]]:
+    """Create chunked, Zstd-compressed HDF5 datasets within *group*."""
+    zstd = hdf5plugin.Zstd(clevel=ZSTD_LEVEL)
 
-    # Access HDF5 datasets (only encoded and labels)
-    encoded_dset = hdf5_group['encoded']
-    label_dsets = {label_col: hdf5_group[f'labels/{label_col}'] for label_col in label_cols_to_store}
-
-    # --- Batch Processing ---
-    # Use functools.partial for cleaner binding of arguments to collate_fn
-    collate_fn_partial = partial(collate_batch, processor=processor, image_col=image_col, label_cols=label_cols_to_store)
-
-    dataloader = torch.utils.data.DataLoader(
-        dataset_split, # Use the subset dataset
-        batch_size=batch_size,
-        collate_fn=collate_fn_partial,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-        # persistent_workers=True if num_workers > 0 else False # Can speed up if workers > 0
+    encoded_ds = group.create_dataset(
+        "encoded",
+        shape=(n_samples, seq_len, hidden),
+        dtype=STORAGE_DTYPE,
+        chunks=(min(batch_size, n_samples), seq_len, hidden),
+        compression=zstd,
     )
 
-    total_items = len(dataset_split) # Total items in the subset for tqdm
-    with tqdm(total=total_items, desc=f"Processing {split_name}", unit="img") as pbar:
-        for batch in dataloader:
-            pixel_values = batch['pixel_values']
-            labels_batch_dict = batch['labels'] # Dict of label tensors to store
-
-            # Handle potential empty batches from collate_fn errors
-            current_batch_size = pixel_values.shape[0]
-            if current_batch_size == 0:
-                 print("Warning: Skipping empty batch returned by collate_fn.", file=sys.stderr)
-                 continue
-
-            pixel_values = pixel_values.to(device=device, dtype=compute_dtype, non_blocking=pin_memory)
-
-            with torch.no_grad():
-                # Get only the final encoded features
-                encoded_features = vision_encoder(pixel_values)
-
-            # Write data directly to the pre-allocated slice
-            end_offset = current_offset + current_batch_size
-            if end_offset > total_items:
-                print(f"Warning: Attempting to write beyond allocated size ({end_offset} > {total_items}). Trimming.", file=sys.stderr)
-                end_offset = total_items
-                current_batch_size = total_items - current_offset
-                if current_batch_size <= 0: break # Stop if we somehow went over
-                encoded_features = encoded_features[:current_batch_size]
-
-
-            # Cast encoded features to float16 for storage
-            encoded_dset[current_offset:end_offset] = encoded_features.cpu().to(torch.float16).numpy()
-
-            # Write each label type to store, casting to uint8
-            for label_name, label_tensor in labels_batch_dict.items():
-                label_dset = label_dsets[label_name]
-                # Ensure label tensor is also trimmed if batch was trimmed
-                label_tensor_trimmed = label_tensor[:current_batch_size]
-                label_dset[current_offset:end_offset] = label_tensor_trimmed.cpu().numpy().astype(LABEL_STORAGE_DTYPE)
-
-            current_offset = end_offset
-            pbar.update(current_batch_size)
-
-    # Final check
-    if current_offset != total_items:
-         print(f"Warning: Final offset ({current_offset}) does not match expected subset size ({total_items}) for split '{split_name}'.", file=sys.stderr)
-    else:
-         print(f"Finished processing {split_name}. Total items processed: {current_offset}")
-
-
-# --- Main Execution ---
-if __name__ == "__main__":
-    print("Starting Stratified FairFace Subset Curation (Memory Optimized, Zstd)...")
-
-    # 1. Load Full Dataset & Get Sizes
-    print(f"Loading full dataset: {DATASET_NAME} ({DATASET_CONFIG})")
-    try:
-        full_dataset = load_dataset(DATASET_NAME, DATASET_CONFIG)
-    except Exception as e:
-        print(f"Error loading dataset '{DATASET_NAME}': {e}", file=sys.stderr)
-        sys.exit(1)
-
-    # FairFace has 'train' and 'validation' splits
-    if 'train' not in full_dataset or 'validation' not in full_dataset:
-        raise ValueError(f"Dataset '{DATASET_NAME}' must contain 'train' and 'validation' splits.")
-
-    original_train_dataset = full_dataset['train']
-    original_val_dataset = full_dataset['validation']
-
-    N_train_original = len(original_train_dataset)
-    N_val_original = len(original_val_dataset)
-    print(f"Original train samples: {N_train_original}, Original validation samples: {N_val_original}")
-
-    # Validate columns on original dataset
-    try:
-         check_columns(original_train_dataset.features, IMAGE_COLUMN, LABEL_COLUMNS_TO_STORE, STRATIFY_COLUMNS)
-         check_columns(original_val_dataset.features, IMAGE_COLUMN, LABEL_COLUMNS_TO_STORE, STRATIFY_COLUMNS)
-    except ValueError as e:
-         print(e, file=sys.stderr)
-         sys.exit(1)
-
-    # 2. Perform Stratified Subsetting - Capture indices
-    print("\nCreating subsets...")
-    train_subset, train_indices = create_stratified_subset(original_train_dataset, STRATIFY_COLUMNS, TARGET_SAMPLES_PER_STRATUM_TRAIN, RANDOM_SEED)
-    val_subset, val_indices = create_stratified_subset(original_val_dataset, STRATIFY_COLUMNS, TARGET_SAMPLES_PER_STRATUM_VAL, RANDOM_SEED)
-
-    N_train_subset = len(train_subset)
-    N_val_subset = len(val_subset)
-    print(f"\nSubset train samples: {N_train_subset}, Subset validation samples: {N_val_subset}")
-
-    if N_train_subset == 0 and N_val_subset == 0:
-        print("Both subsets are empty. Exiting.")
-        sys.exit(0)
-
-
-    # 3. Load Model and Processor
-    print(f"\nLoading model: {MODEL_ID}")
-    try:
-        # Load processor first as it might be needed for sample processing
-        processor = AutoProcessor.from_pretrained(MODEL_ID, trust_remote_code=True)
-        # Load model components
-        deconstructed_model = DeconstructedFlorence2(MODEL_ID, device=DEVICE, dtype=COMPUTE_DTYPE, trust_remote_code=True)
-        deconstructed_model.model.eval() # Set model to evaluation mode
-        vision_encoder = deconstructed_model.vision_encoder # Access the vision encoder part
-    except Exception as e:
-        print(f"Error loading model or processor '{MODEL_ID}': {e}", file=sys.stderr)
-        sys.exit(1)
-
-    # 4. Determine Shapes and Dtypes (using one sample from original data)
-    print("\nDetermining HDF5 shapes and dtypes...")
-    try:
-        # Use a sample from the *original* dataset to get shapes; subsetting doesn't change per-item shape
-        sample_source = original_train_dataset if N_train_original > 0 else original_val_dataset
-        if not sample_source:
-             raise ValueError("Cannot determine shapes, both original splits are empty.")
-
-        sample_data = next(iter(sample_source))
-        sample_image = sample_data[IMAGE_COLUMN]
-
-        # Handle potential non-PIL images in datasets library
-        if not isinstance(sample_image, Image.Image):
-             print(f"Warning: Sample image is not PIL Image, type is {type(sample_image)}. Attempting to load.")
-             try:
-                 if isinstance(sample_image, dict) and 'bytes' in sample_image and sample_image['bytes']:
-                     from io import BytesIO
-                     sample_image = Image.open(BytesIO(sample_image['bytes'])).convert("RGB")
-                 elif isinstance(sample_image, str) and os.path.exists(sample_image): # If it's a path string
-                      sample_image = Image.open(sample_image).convert("RGB")
-                 # Add more loaders if necessary based on dataset format
-                 else:
-                     # Attempt default conversion if possible
-                     sample_image = sample_image.convert("RGB") # datasets Image object might have convert()
-             except Exception as load_err:
-                  print(f"Failed to load or convert sample image: {load_err}", file=sys.stderr)
-                  print("Ensure the image column contains processable image data (PIL Image, path, or bytes).")
-                  sys.exit(1)
-
-        # Get shapes/dtypes for encoded features and labels_to_store ONLY
-        encoded_shape_tpl, encoded_storage_dtype, label_storage_dtypes = get_shapes_and_dtypes(
-            processor, vision_encoder, sample_image, LABEL_COLUMNS_TO_STORE, DEVICE, COMPUTE_DTYPE
+    label_group = group.create_group("labels")
+    label_datasets: dict[str, h5py.Dataset] = {}
+    for name in label_names:
+        label_datasets[name] = label_group.create_dataset(
+            name,
+            shape=(n_samples,),
+            dtype=np.int64,
+            chunks=(min(batch_size * 4, n_samples),),
+            compression=zstd,
         )
-        print(f"  Encoded shape (SeqLen, Channels): {encoded_shape_tpl}, storage dtype: {encoded_storage_dtype}")
-        for label_col, dtype in label_storage_dtypes.items():
-             print(f"  Label '{label_col}' storage dtype: {dtype}")
 
-    except Exception as e:
-        print(f"Error determining shapes/dtypes: {e}", file=sys.stderr)
-        # Add more specific error handling if needed
-        import traceback
-        traceback.print_exc()
+    return encoded_ds, label_datasets
+
+
+def _probe_seq_len(adapter: VEAdapter) -> int:
+    """Send a dummy image through the adapter to discover the output seq length."""
+    dummy = Image.new("RGB", (448, 448))
+    preprocessed = adapter.preprocess([dummy])
+    out = adapter.encode(preprocessed)
+    seq_len = out.shape[1]
+    # Store on the adapter so encode() can pad to a consistent length
+    adapter._target_seq_len = seq_len  # type: ignore[attr-defined]
+    return seq_len
+
+
+# ---------------------------------------------------------------------------
+# FairFace extraction (stratified train/val split)
+# ---------------------------------------------------------------------------
+
+
+def extract_fairface(
+    adapter: VEAdapter,
+    output_path: Path,
+    batch_size: int,
+    num_workers: int,
+    val_fraction: float = 0.15,
+    max_samples: int | None = None,
+) -> None:
+    """Extract VE latents from FairFace and write to HDF5 with stratified split."""
+    from datasets import load_dataset
+    from sklearn.model_selection import StratifiedShuffleSplit
+
+    log.info("Loading FairFace from HuggingFace ...")
+    hf_ds = load_dataset("HuggingFaceM4/FairFace", "0.25", split="train")
+
+    if max_samples is not None and max_samples < len(hf_ds):
+        log.info("Truncating FairFace from %d to %d samples", len(hf_ds), max_samples)
+        hf_ds = hf_ds.select(range(max_samples))
+
+    ff_dataset = FairFaceImageDataset(hf_ds)
+    n_total = len(ff_dataset)
+
+    log.info("Gathering labels for stratified split ...")
+    all_races = np.array([hf_ds[i]["race"] for i in range(n_total)])
+
+    splitter = StratifiedShuffleSplit(
+        n_splits=1, test_size=val_fraction, random_state=42
+    )
+    train_idx, val_idx = next(splitter.split(np.zeros(n_total), all_races))
+
+    log.info("Split: %d training, %d validation", len(train_idx), len(val_idx))
+
+    seq_len = _probe_seq_len(adapter)
+    hidden = adapter.hidden_size
+    log.info("VE output: seq_len=%d, hidden=%d", seq_len, hidden)
+
+    label_names = ["age", "gender", "race"]
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with h5py.File(output_path, "w") as f_out:
+        f_out.attrs["model"] = type(adapter).__name__
+        f_out.attrs["dataset"] = "fairface"
+
+        for split_name, indices in [
+            ("training", train_idx),
+            ("validation", val_idx),
+        ]:
+            subset = torch.utils.data.Subset(ff_dataset, indices.tolist())
+            loader = DataLoader(
+                subset,
+                batch_size=batch_size,
+                shuffle=False,
+                num_workers=num_workers,
+                collate_fn=_pil_collate,
+                pin_memory=False,
+            )
+
+            group = f_out.create_group(split_name)
+            n = len(indices)
+
+            encoded_ds, label_ds = _create_hdf5_datasets(
+                group, n, seq_len, hidden, batch_size, label_names
+            )
+
+            zstd = hdf5plugin.Zstd(clevel=ZSTD_LEVEL)
+            group.create_dataset(
+                "original_indices",
+                data=np.array(indices, dtype=np.int64),
+                compression=zstd,
+            )
+
+            write_idx = 0
+            for batch in tqdm(loader, desc=f"FairFace {split_name}"):
+                images: list[Image.Image] = batch["image"]
+                preprocessed = adapter.preprocess(images)
+                hidden_states = adapter.encode(preprocessed)
+
+                bs = hidden_states.shape[0]
+                arr = hidden_states.cpu().numpy().astype(STORAGE_DTYPE)
+                encoded_ds[write_idx : write_idx + bs] = arr
+
+                for name in label_names:
+                    labs = np.array(batch[name], dtype=np.int64)
+                    label_ds[name][write_idx : write_idx + bs] = labs
+
+                write_idx += bs
+
+            log.info(
+                "Wrote %d samples to %s/%s", write_idx, output_path, split_name
+            )
+
+    log.info("FairFace extraction complete: %s", output_path)
+
+
+# ---------------------------------------------------------------------------
+# ImageNet extraction (train split for SAE training)
+# ---------------------------------------------------------------------------
+
+
+def extract_imagenet(
+    adapter: VEAdapter,
+    output_path: Path,
+    batch_size: int,
+    num_workers: int,
+    imagenet_path: str | None = None,
+    max_samples: int | None = None,
+) -> None:
+    """Extract VE latents from ImageNet training set and write to HDF5."""
+    log.info("Loading ImageNet ...")
+    if imagenet_path is not None:
+        # Use torchvision ImageFolder for fast local loading
+        from torchvision.datasets import ImageFolder
+
+        class _LocalImageNetDataset(Dataset):
+            """Thin wrapper around torchvision ImageFolder to match our dict API."""
+
+            def __init__(self, root: str) -> None:
+                self._folder = ImageFolder(root)
+
+            def __len__(self) -> int:
+                return len(self._folder)
+
+            def __getitem__(self, idx: int) -> dict:
+                img, label = self._folder[idx]
+                return {"image": img.convert("RGB"), "label": label}
+
+        in_dataset = _LocalImageNetDataset(imagenet_path)
+    else:
+        from datasets import load_dataset
+        hf_ds = load_dataset(
+            "ILSVRC/imagenet-1k", split="train", trust_remote_code=True
+        )
+        in_dataset = ImageNetImageDataset(hf_ds)
+
+    n_total = len(in_dataset)
+    if max_samples is not None and max_samples < n_total:
+        log.info("Truncating ImageNet from %d to %d samples", n_total, max_samples)
+        n_total = max_samples
+
+    log.info("ImageNet: %d images", n_total)
+
+    seq_len = _probe_seq_len(adapter)
+    hidden = adapter.hidden_size
+    log.info("VE output: seq_len=%d, hidden=%d", seq_len, hidden)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Split into training/validation (90/10)
+    indices = np.arange(n_total)
+    np.random.seed(42)
+    np.random.shuffle(indices)
+    val_size = max(1, n_total // 10)
+    val_indices = set(indices[:val_size].tolist())
+
+    train_indices = [i for i in range(n_total) if i not in val_indices]
+    val_idx_list = sorted(val_indices)
+
+    log.info("Split: %d training, %d validation", len(train_indices), len(val_idx_list))
+
+    with h5py.File(output_path, "w") as f_out:
+        f_out.attrs["model"] = type(adapter).__name__
+        f_out.attrs["dataset"] = "imagenet"
+
+        for split_name, split_indices in [
+            ("training", train_indices),
+            ("validation", val_idx_list),
+        ]:
+            subset = torch.utils.data.Subset(in_dataset, split_indices)
+            loader = DataLoader(
+                subset,
+                batch_size=batch_size,
+                shuffle=False,
+                num_workers=num_workers,
+                collate_fn=_pil_collate,
+                pin_memory=False,
+            )
+
+            group = f_out.create_group(split_name)
+            n = len(split_indices)
+
+            encoded_ds, label_ds = _create_hdf5_datasets(
+                group, n, seq_len, hidden, batch_size, ["class"]
+            )
+
+            write_idx = 0
+            for batch in tqdm(loader, desc=f"ImageNet {split_name}"):
+                images = batch["image"]
+                preprocessed = adapter.preprocess(images)
+                hidden_states = adapter.encode(preprocessed)
+
+                bs = hidden_states.shape[0]
+                arr = hidden_states.cpu().numpy().astype(STORAGE_DTYPE)
+                encoded_ds[write_idx : write_idx + bs] = arr
+                label_ds["class"][write_idx : write_idx + bs] = np.array(
+                    batch["label"], dtype=np.int64
+                )
+                write_idx += bs
+
+            log.info("Wrote %d samples to %s/%s", write_idx, output_path, split_name)
+
+    log.info("ImageNet extraction complete: %s", output_path)
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
+    parser = argparse.ArgumentParser(description="Extract VE latents to HDF5")
+    parser.add_argument(
+        "--model-name",
+        required=True,
+        choices=list(ADAPTERS.keys()),
+        help="VLM to extract from",
+    )
+    parser.add_argument(
+        "--dataset",
+        required=True,
+        choices=["fairface", "imagenet"],
+        help="Dataset to extract from",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="Output HDF5 path",
+    )
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--num-workers", type=int, default=4)
+    parser.add_argument(
+        "--imagenet-path",
+        type=str,
+        default=None,
+        help="Local path to ImageNet (if not using HuggingFace download)",
+    )
+    parser.add_argument(
+        "--max-samples",
+        type=int,
+        default=None,
+        help="Limit total samples for fast small-scale testing",
+    )
+    parser.add_argument(
+        "--layer",
+        type=int,
+        default=None,
+        help="Extract activations from this intermediate layer index "
+        "(0-indexed, includes embedding layer at index 0). "
+        "If not specified, uses the final layer output.",
+    )
+    args = parser.parse_args()
+
+    if args.output.exists():
+        log.warning("Output file already exists: %s. Overwriting.", args.output)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    log.info("Device: %s", device)
+
+    adapter = ADAPTERS[args.model_name]()
+    if args.layer is not None:
+        adapter._extract_layer = args.layer
+        log.info("Extracting intermediate layer %d", args.layer)
+    adapter.load(device)
+
+    if args.dataset == "fairface":
+        extract_fairface(adapter, args.output, args.batch_size, args.num_workers, max_samples=args.max_samples)
+    elif args.dataset == "imagenet":
+        extract_imagenet(
+            adapter,
+            args.output,
+            args.batch_size,
+            args.num_workers,
+            args.imagenet_path,
+            max_samples=args.max_samples,
+        )
+    else:
+        log.error("Unknown dataset: %s", args.dataset)
         sys.exit(1)
 
-    # 5. Initialize HDF5 File - Save indices
-    print(f"\nInitializing HDF5 file (pre-allocated for subset): {HDF5_OUTPUT_PATH}")
-    os.makedirs(os.path.dirname(HDF5_OUTPUT_PATH), exist_ok=True)
-    try:
-        with h5py.File(HDF5_OUTPUT_PATH, 'w') as file:
-            # Add top-level attributes for context
-            file.attrs['dataset_name'] = DATASET_NAME
-            file.attrs['dataset_config'] = DATASET_CONFIG if DATASET_CONFIG else 'N/A'
-            file.attrs['stratify_columns'] = str(STRATIFY_COLUMNS) # Store as string
-            # Store both target sample counts
-            file.attrs['target_samples_per_stratum_train'] = TARGET_SAMPLES_PER_STRATUM_TRAIN
-            file.attrs['target_samples_per_stratum_val'] = TARGET_SAMPLES_PER_STRATUM_VAL
-            file.attrs['model_id'] = MODEL_ID
-            file.attrs['storage_float_dtype'] = str(FLOAT_STORAGE_DTYPE)
-            file.attrs['storage_label_dtype'] = str(LABEL_STORAGE_DTYPE)
-            file.attrs['random_seed'] = RANDOM_SEED # Good practice to store seed used
 
-
-            train_group = file.create_group('training')
-            val_group = file.create_group('validation')
-
-            # Pass indices list along with other info
-            for group, n_samples_subset, split_name, indices_list in [
-                (train_group, N_train_subset, 'training', train_indices),
-                (val_group, N_val_subset, 'validation', val_indices)
-            ]:
-                group.attrs['subset_size'] = n_samples_subset
-                if n_samples_subset == 0:
-                    print(f"  Skipping dataset creation for empty '{split_name}' subset.")
-                    continue
-                print(f"  Creating datasets for '{split_name}' group (subset size: {n_samples_subset})...")
-
-                # --- Save Original Indices ---
-                if indices_list: # Only save if list is not empty
-                    indices_dset = group.create_dataset(
-                        'original_indices',
-                        data=np.array(indices_list, dtype=np.int64), # Use efficient int type
-                        compression=hdf5plugin.Zstd(clevel=ZSTD_CLEVEL) # Compress indices too
-                    )
-                    indices_dset.attrs['description'] = f"Indices of these samples within the original '{split_name}' split of {DATASET_NAME}/{DATASET_CONFIG}."
-                    print(f"    Saved 'original_indices' dataset with shape {indices_dset.shape}")
-                else:
-                     print(f"    Skipping 'original_indices' dataset for empty subset '{split_name}'.")
-
-
-                # Encoded data
-                encoded_chunks = (min(BATCH_SIZE, n_samples_subset),) + encoded_shape_tpl
-                print(f"    Using encoded chunk shape: {encoded_chunks}")
-
-                group.create_dataset(
-                    'encoded',
-                    shape=(n_samples_subset,) + encoded_shape_tpl,
-                    dtype=encoded_storage_dtype,
-                    chunks=encoded_chunks, # Use corrected chunks
-                    compression=hdf5plugin.Zstd(clevel=ZSTD_CLEVEL)
-                )
-
-
-                # Labels group
-                labels_group = group.create_group('labels')
-                label_chunks = (min(BATCH_SIZE * 10, n_samples_subset),)
-                for label_col, label_dtype in label_storage_dtypes.items():
-                     labels_group.create_dataset(
-                         label_col,
-                         shape=(n_samples_subset,),
-                         dtype=label_dtype,
-                         chunks=label_chunks,
-                         compression=hdf5plugin.Zstd(clevel=ZSTD_CLEVEL)
-                     )
-
-
-            # 6. Process and Store Subsets
-            print("\nStarting subset data processing and storage...")
-
-            if N_train_subset > 0:
-                process_and_store_split(
-                    train_subset, train_group, processor, vision_encoder,
-                    IMAGE_COLUMN, LABEL_COLUMNS_TO_STORE, BATCH_SIZE, NUM_WORKERS, PIN_MEMORY,
-                    DEVICE, COMPUTE_DTYPE, 'training'
-                )
-            else:
-                print("Skipping processing for empty 'training' subset.")
-
-            if N_val_subset > 0:
-                process_and_store_split(
-                    val_subset, val_group, processor, vision_encoder,
-                    IMAGE_COLUMN, LABEL_COLUMNS_TO_STORE, BATCH_SIZE, NUM_WORKERS, PIN_MEMORY,
-                    DEVICE, COMPUTE_DTYPE, 'validation'
-                )
-            else:
-                 print("Skipping processing for empty 'validation' subset.")
-
-
-    except Exception as e:
-        print(f"\nError during HDF5 creation or data processing/storage: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
-        # Clean up potentially incomplete HDF5 file
-        if os.path.exists(HDF5_OUTPUT_PATH):
-            print(f"Removing potentially incomplete file: {HDF5_OUTPUT_PATH}", file=sys.stderr)
-            # os.remove(HDF5_OUTPUT_PATH) # Be cautious with auto-removal
-        sys.exit(1)
-
-    # 7. Cleanup (Handled by 'with' statement)
-    print(f"\nSubset dataset curation complete. Output saved to: {HDF5_OUTPUT_PATH}")
+if __name__ == "__main__":
+    main()

@@ -1,70 +1,96 @@
-import hydra
-from omegaconf import DictConfig, OmegaConf
 import logging
-import wandb
-import os
-# Import trainers to ensure registry or discovery works if not using explicit targets
-# Not strictly necessary if using full _target_ paths in config
-# from trainers import sae_trainer, probe_trainer
+import subprocess
 
-# Setup logging
+import hydra
+import lightning as L
+import torch
+from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.loggers import WandbLogger
+from omegaconf import DictConfig, OmegaConf
+
 log = logging.getLogger(__name__)
+
+
+def _get_git_sha() -> str:
+    """Return the current git commit SHA, or 'unknown' if not in a repo."""
+    try:
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
+    except Exception:
+        return "unknown"
+
 
 @hydra.main(config_path="../config", config_name="config", version_base=None)
 def main(cfg: DictConfig) -> None:
-    """
-    Main entry point for training, configured by Hydra.
+    # ------------------------------------------------------------------
+    # Reproducibility: seed all RNGs
+    # ------------------------------------------------------------------
+    seed = cfg.get("seed", 42)
+    L.seed_everything(seed, workers=True)
+    log.info("Global seed set to %d", seed)
 
-    Instantiates the appropriate trainer based on the configuration
-    and runs the training process.
-    """
-    # Print the resolved configuration
-    print("--- Configuration ---")
-    print(OmegaConf.to_yaml(cfg))
-    print("---------------------")
-    print(f"Hydra working directory: {os.getcwd()}")
-    print(f"Original working directory: {hydra.utils.get_original_cwd()}")
-    print("---------------------")
+    if cfg.get("deterministic", False):
+        torch.use_deterministic_algorithms(True)
+        log.info("Deterministic algorithms enabled (may be slower)")
 
-    # Basic logging setup (could be more sophisticated)
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+    # ------------------------------------------------------------------
+    # Log run metadata (git SHA, resolved config)
+    # ------------------------------------------------------------------
+    git_sha = _get_git_sha()
+    resolved_cfg = OmegaConf.to_container(cfg, resolve=True)
+    resolved_cfg["_git_sha"] = git_sha  # type: ignore[index]
+    log.info("Git SHA: %s", git_sha)
 
-    trainer = None # Initialize trainer variable
-    try:
-        # Instantiate the trainer specified in the configuration
-        # Pass the full config (`cfg=cfg`) to the trainer's __init__
-        # _recursive_=False prevents Hydra from auto-instantiating nested configs like
-        # cfg.model, cfg.data if the trainer handles instantiation itself.
-        log.info(f"Instantiating trainer: {cfg.trainer._target_}")
-        trainer = hydra.utils.instantiate(cfg.trainer, cfg=cfg, _recursive_=False)
-        log.info("Trainer instantiated successfully.")
+    # ------------------------------------------------------------------
+    # Instantiate module and data
+    # ------------------------------------------------------------------
+    module = hydra.utils.instantiate(cfg.module, _recursive_=False)
+    datamodule = hydra.utils.instantiate(cfg.data)
 
-        # Run the training process
-        log.info("Starting trainer run...")
-        trainer.run()
-        log.info("Trainer run finished.")
+    # ------------------------------------------------------------------
+    # Callbacks
+    # ------------------------------------------------------------------
+    callbacks = [
+        ModelCheckpoint(
+            monitor="val/loss",
+            mode="min",
+            save_top_k=1,
+            filename="best-{epoch}-{step}",
+        ),
+        ModelCheckpoint(filename="last-{epoch}-{step}", save_last=True),
+    ]
 
-    except Exception as e:
-        log.exception("An error occurred during trainer instantiation or execution:")
-        # Optionally finish wandb run with failure status if it was initialized
-        if hasattr(trainer, 'wandb_run') and trainer.wandb_run:
-            log.error("Finishing WandB run with failure status due to error.")
-            wandb.finish(exit_code=1)
-        # Re-raise the exception after logging and potentially finishing wandb
-        raise e # Or handle differently, e.g., exit(1)
+    # ------------------------------------------------------------------
+    # Logger
+    # ------------------------------------------------------------------
+    logger = (
+        WandbLogger(
+            project=cfg.wandb.project,
+            entity=cfg.wandb.get("entity"),
+            config=resolved_cfg,
+        )
+        if cfg.wandb.get("enabled", True)
+        else None
+    )
 
-    finally:
-        # --- WandB Finalization ---
-        # Ensure WandB run finishes cleanly, regardless of trainer success/failure
-        if wandb.run is not None:
-            log.info("Finishing WandB run...")
-            # Let wandb.finish handle the exit code based on exceptions
-            wandb.finish()
-            log.info("WandB run finished.")
-        # Potentially other cleanup code here
+    # ------------------------------------------------------------------
+    # Trainer
+    # ------------------------------------------------------------------
+    trainer = L.Trainer(
+        **OmegaConf.to_container(cfg.trainer, resolve=True),
+        callbacks=callbacks,
+        logger=logger,
+        deterministic=cfg.get("deterministic", False),
+    )
+
+    trainer.fit(module, datamodule=datamodule)
 
 
 if __name__ == "__main__":
-    # Setup PYTHONPATH if necessary, e.g., export PYTHONPATH=$PYTHONPATH:$(pwd)
-    # Make sure the 'src' directory is importable
-    main() 
+    main()
