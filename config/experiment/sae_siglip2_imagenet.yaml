@@ -1,0 +1,17 @@
+# @package _global_
+
+# Experiment: Train BatchTopK SAE on SigLIP2 ImageNet latents
+# Usage: python -m src.main +experiment=sae_siglip2_imagenet
+
+defaults:
+  - override /model: sae_siglip2
+  - override /data: imagenet_siglip2
+  - override /module: sae
+
+trainer:
+  max_epochs: 10
+  precision: 16-mixed
+
+wandb:
+  project: idarve
+  enabled: true

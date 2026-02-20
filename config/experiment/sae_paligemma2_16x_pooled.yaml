@@ -1,0 +1,17 @@
+# @package _global_
+
+# Experiment: Train 16x BatchTopK SAE on PaliGemma2 pooled FairFace latents
+# Usage: python -m src.main +experiment=sae_paligemma2_16x_pooled
+
+defaults:
+  - override /model: sae_paligemma2_16x
+  - override /data: fairface_paligemma2_pooled_no_labels
+  - override /module: sae
+
+trainer:
+  max_epochs: 50
+  precision: 16-mixed
+
+wandb:
+  project: idarve
+  enabled: true

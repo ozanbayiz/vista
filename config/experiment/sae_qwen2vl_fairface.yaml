@@ -1,0 +1,17 @@
+# @package _global_
+
+# Experiment: Train BatchTopK SAE on Qwen2-VL FairFace latents
+# Usage: python -m src.main +experiment=sae_qwen2vl_fairface
+
+defaults:
+  - override /model: sae_qwen2vl
+  - override /data: fairface_qwen2vl_no_labels
+  - override /module: sae
+
+trainer:
+  max_epochs: 10
+  precision: 16-mixed
+
+wandb:
+  project: idarve
+  enabled: true

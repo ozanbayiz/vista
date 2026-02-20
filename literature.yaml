@@ -1,0 +1,666 @@
+# IDARVE Literature Review
+#
+# Every paper referenced during the project-ideation discussion (Feb 2026).
+# Author names were verified via arXiv / ACL Anthology / OpenReview where
+# the original plan text contained incorrect attributions (noted inline).
+
+papers:
+
+  # ===========================================================================
+  # 7.1  SAEs on Vision Models
+  # ===========================================================================
+
+  - id: olson2025probing
+    title: "Probing the Representational Power of Sparse Autoencoders in Vision Models"
+    authors: "Olson, M. L., Hinck, M., Ratzlaff, N., Li, C., Howard, P., Lal, V., Tseng, S.-Y."
+    venue: "ICCV 2025 Workshop Findings"
+    year: 2025
+    url: "https://arxiv.org/abs/2508.11277"
+    core_claim: "SAE features from vision embedding models, diffusion models, and multimodal LLMs are semantically meaningful, improve OOD generalization, and enable controllable generation."
+    datasets:
+      - "ImageNet"
+      - "Stable Diffusion latents"
+    baselines:
+      - "PCA"
+      - "raw embeddings"
+    code_released: false
+    code_url: ""
+    relevance: "Most directly comparable to IDARVE's multi-encoder SAE evaluation; establishes that SAEs work on vision models but does not study demographic features."
+
+  - id: rao2025monosemantic
+    title: "Sparse Autoencoders Learn Monosemantic Features in Vision-Language Models"
+    authors: "Rao, A. et al."
+    venue: "NeurIPS 2025"
+    year: 2025
+    url: "https://arxiv.org/abs/2504.02821"
+    core_claim: "SAEs trained on CLIP's vision encoder produce monosemantic features whose interventions steer multimodal LLM outputs without modifying the language model."
+    datasets:
+      - "CLIP embeddings"
+    baselines:
+      - "PCA directions"
+      - "random directions"
+    code_released: false
+    code_url: ""
+    relevance: "Closest precedent for Contribution B (causal influence of VE SAE features on LM outputs), but does not study demographic features or perform causal tracing to text generation."
+
+  - id: rao2025steering
+    title: "Steering CLIP's Vision Transformer with Sparse Autoencoders"
+    authors: "Rao, A. et al."
+    venue: "CVPR 2025 Workshop on Mechanistic Interpretability for Vision"
+    year: 2025
+    url: "https://arxiv.org/abs/2504.08729"
+    core_claim: "10-15% of SAE features in CLIP ViT are steerable, and SAEs yield thousands more steerable directions than the base model."
+    datasets:
+      - "CLIP ViT-B/16 activations"
+    baselines:
+      - "base-model neuron steering"
+    code_released: false
+    code_url: ""
+    relevance: "Establishes the steerability landscape for vision SAEs; our intervention modes (suppression, amplification, attenuation) operate in this same space."
+
+  - id: gorton2025interpretable
+    title: "Interpretable and Testable Vision Features via Sparse Autoencoders"
+    authors: "Gorton, L. et al."
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2502.06755"
+    core_claim: "SAEs enable concept discovery and causal probing with patch-level causal edits across tasks without retraining."
+    datasets:
+      - "ImageNet"
+      - "CUB-200"
+    baselines:
+      - "TCAV"
+      - "concept bottleneck models"
+    code_released: false
+    code_url: ""
+    relevance: "Demonstrates causal edits via SAE features in vision; our hook-based intervention is an analogous approach applied specifically to demographic features."
+
+  - id: oldenburg2025sparc
+    title: "SPARC: Sparse Autoencoders for Aligned Representation of Concepts"
+    authors: "Oldenburg, L. et al."
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2507.06265"
+    core_claim: "A unified SAE latent space shared across architectures and modalities via cross-reconstruction loss achieves Jaccard overlap of 0.80."
+    datasets:
+      - "CLIP activations"
+      - "cross-modal pairs"
+    baselines:
+      - "independent SAEs per model"
+      - "CCA alignment"
+    code_released: false
+    code_url: ""
+    relevance: "Directly relevant to Contribution A (cross-architecture universality). SPARC aligns general features; we ask whether this alignment holds for demographic-specific features."
+
+  - id: olson2025hierarchical
+    title: "Analyzing Hierarchical Structure in Vision Models with Sparse Autoencoders"
+    authors: "Olson, M. L., Hinck, M., Ratzlaff, N., Li, C., Howard, P., Lal, V., Tseng, S.-Y."
+    venue: "CVPR 2025 Workshop on Mechanistic Interpretability for Vision"
+    year: 2025
+    url: "https://openaccess.thecvf.com/content/CVPR2025W/MIV/papers/Olson_Analyzing_Hierarchical_Structure_in_Vision_Models_with_Sparse_Autoencoders_CVPRW_2025_paper.pdf"
+    core_claim: "SAEs recover meaningful hierarchical decompositions of DINOv2 representations in later layers, aligned with ImageNet taxonomy."
+    datasets:
+      - "ImageNet"
+      - "DINOv2 activations"
+    baselines:
+      - "PCA"
+    code_released: false
+    code_url: ""
+    relevance: "Shows SAEs can discover structured decompositions in DINOv2 (one of our five VEs); demographic features may exhibit analogous hierarchical structure."
+
+  # ===========================================================================
+  # 7.2  SAE Methodology and Limitations
+  # ===========================================================================
+
+  - id: bussmann2024batchtopk
+    title: "BatchTopK Sparse Autoencoders"
+    authors: "Bussmann, B., Leask, P., Nanda, N."
+    venue: "NeurIPS 2024 Workshop on Scientific Methods for Understanding Neural Networks"
+    year: 2024
+    url: "https://arxiv.org/abs/2412.06410"
+    core_claim: "BatchTopK SAEs enforce a fixed average sparsity across the batch, achieving comparable performance to JumpReLU with direct sparsity control."
+    datasets:
+      - "GPT-2 activations"
+    baselines:
+      - "TopK SAE"
+      - "JumpReLU SAE"
+      - "Vanilla SAE"
+    code_released: false
+    code_url: ""
+    relevance: "One of the four SAE variants IDARVE implements; the BatchTopK architecture is used in our SAE training pipeline."
+
+  - id: bricken2023monosemanticity
+    title: "Towards Monosemanticity: Decomposing Language Models With Dictionary Learning"
+    authors: "Bricken, T., Templeton, A., Batson, J., Chen, B., Jermyn, A., Conerly, T., Turner, N., Anil, C., Denison, C., Askell, A., Lasenby, R., Wu, Y., Kravec, S., Schiefer, N., Maxwell, T., Joseph, N., Tamuz, A., Haas, K., Kaplan, J., Olah, C."
+    venue: "Transformer Circuits Thread (Anthropic)"
+    year: 2023
+    url: "https://transformer-circuits.pub/2023/monosemantic-features/index.html"
+    core_claim: "Sparse autoencoders decompose a 512-neuron transformer layer into over 4000 interpretable monosemantic features, overcoming polysemanticity."
+    datasets:
+      - "Anthropic internal LM activations"
+    baselines:
+      - "individual neuron analysis"
+      - "PCA"
+    code_released: false
+    code_url: ""
+    relevance: "Foundational work establishing SAEs for mechanistic interpretability; the theoretical motivation for all SAE-based analysis in IDARVE."
+
+  - id: cunningham2024interpretable
+    title: "Sparse Autoencoders Find Highly Interpretable Features in Language Models"
+    authors: "Cunningham, H., Ewart, A., Riggs, L., Huben, R., Sharkey, L."
+    venue: "ICLR 2024"
+    year: 2024
+    url: "https://arxiv.org/abs/2309.08600"
+    core_claim: "SAEs scale to large language models and produce features that are more interpretable than individual neurons, as measured by automated and human evaluation."
+    datasets:
+      - "GPT-2 activations"
+      - "Pythia activations"
+    baselines:
+      - "neuron-level analysis"
+      - "PCA"
+    code_released: true
+    code_url: "https://github.com/ApolloResearch/e2e_sae"
+    relevance: "Establishes SAE scalability and interpretability evaluation methodology that informs our feature-demographic alignment analysis."
+
+  - id: chanin2025canonical
+    title: "Sparse Autoencoders Do Not Find Canonical Units of Analysis"
+    authors: "Leask, P., Bussmann, B., Pearce, M., Bloom, J., Tigges, C., Al Moubayed, N., Sharkey, L., Nanda, N."
+    venue: "ICLR 2025"
+    year: 2025
+    url: "https://arxiv.org/abs/2502.04878"
+    core_claim: "SAE latents are neither complete nor atomic: larger SAEs find novel features missing from smaller ones, and meta-SAEs decompose individual features into sub-components."
+    datasets:
+      - "GPT-2 activations"
+      - "Gemma-2 activations"
+    baselines:
+      - "SAEs of varying sizes"
+    code_released: true
+    code_url: "https://metasaes.streamlit.app/"
+    relevance: "Important caveat for all SAE-based claims in IDARVE: our SDF features may not be the unique or atomic units of demographic encoding."
+
+  # ===========================================================================
+  # 7.3  SAEs for Fairness and Debiasing
+  # ===========================================================================
+
+  - id: barbulau2025sp
+    title: "Rethinking Sparse Autoencoders: Select-and-Project for Fairness and Control from Encoder Features Alone"
+    authors: "Barbulau, A. et al."
+    venue: "NeurIPS 2025 Workshop on Mechanistic Interpretability"
+    year: 2025
+    url: "https://arxiv.org/abs/2509.10809"
+    core_claim: "S&P Top-K uses only the SAE encoder weights to build an orthogonal projection that removes demographic information, achieving 3.2x fairness improvement on CelebA and FairFace."
+    datasets:
+      - "CelebA"
+      - "FairFace"
+    baselines:
+      - "LEACE"
+      - "full SAE intervention"
+      - "random projection"
+    code_released: false
+    code_url: ""
+    relevance: "IDARVE directly implements S&P Top-K in src/intervene.py as one of four intervention methods."
+
+  - id: shao2025projecting
+    title: "Projecting Assumptions: The Duality Between Sparse Autoencoders and Concept Geometry"
+    authors: "Shao, B. et al."
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2503.01822"
+    core_claim: "SAE features correspond to specific geometric structures in concept space; formalises when SAE-based interventions succeed and fail."
+    datasets:
+      - "synthetic data"
+      - "LM activations"
+    baselines:
+      - "concept bottleneck models"
+    code_released: false
+    code_url: ""
+    relevance: "Provides theoretical grounding for why SAE-based demographic feature interventions may or may not preserve non-target information."
+
+  - id: li2025interpretable
+    title: "Interpretable Embeddings with Sparse Autoencoders: A Data Analysis Toolkit"
+    authors: "Li, H. et al."
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2512.10092"
+    core_claim: "SAE embeddings enable cost-effective bias detection in training data and model behavior, serving as a practical bias auditing tool."
+    datasets:
+      - "CLIP embeddings"
+      - "text corpora"
+    baselines:
+      - "PCA"
+      - "topic models"
+    code_released: false
+    code_url: ""
+    relevance: "Demonstrates practical SAE-based bias auditing; complementary to IDARVE's SDF-based approach to identifying demographic features."
+
+  # ===========================================================================
+  # 7.4  Demographic Bias in Vision-Language Models
+  # ===========================================================================
+
+  - id: karkkainen2021fairface
+    title: "FairFace: Face Attribute Dataset for Balanced Race, Gender, and Age for Bias Measurement and Mitigation"
+    authors: "Kärkkäinen, K., Joo, J."
+    venue: "WACV 2021"
+    year: 2021
+    url: "https://arxiv.org/abs/1908.04913"
+    core_claim: "A balanced face attribute dataset (108,501 images, 7 race groups, 2 genders, 9 age bins) that enables fairer model training and evaluation."
+    datasets:
+      - "FairFace"
+    baselines:
+      - "UTKFace"
+      - "CelebA"
+    code_released: true
+    code_url: "https://github.com/joojs/fairface"
+    relevance: "The primary dataset used by IDARVE for all demographic analysis, linear probing, and SDF discovery."
+
+  - id: ruggeri2025data
+    title: "Data Matters Most: Auditing Social Bias in Contrastive Vision Language Models"
+    authors: "Ruggeri, N. et al."
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2501.13223"
+    core_claim: "Training data composition, not model architecture, is the primary driver of social bias in contrastive VLMs like CLIP and OpenCLIP."
+    datasets:
+      - "CLIP models"
+      - "OpenCLIP models"
+    baselines:
+      - "architectural variants"
+      - "dataset ablations"
+    code_released: false
+    code_url: ""
+    relevance: "Suggests that cross-architecture universality of demographic features (Contribution A) may reflect shared training data properties rather than architectural similarities."
+
+  - id: zhang2025joint
+    title: "Joint Vision-Language Social Bias Removal for CLIP"
+    authors: "Zhang, H., Guo, Y., Kankanhalli, M."
+    venue: "CVPR 2025"
+    year: 2025
+    url: "https://arxiv.org/abs/2411.12785"
+    core_claim: "Joint V-L debiasing avoids the 'over-debiasing' problem of modality-independent approaches by aligning image and text biases before removal."
+    datasets:
+      - "CLIP embeddings"
+      - "FairFace"
+      - "CelebA"
+    baselines:
+      - "CLIP-clip"
+      - "Biased-prompts"
+    code_released: true
+    code_url: "https://github.com/haoyusimon/VL_Debiasing"
+    relevance: "Addresses debiasing directly in VLMs; the over-debiasing finding motivates our selective SDF suppression (only target-attribute features) over blanket erasure."
+
+  - id: ghate2025intrinsic
+    title: "Intrinsic Bias is Predicted by Pretraining Data and Correlates with Downstream Performance in Vision-Language Encoders"
+    authors: "Ghate, K., Slaughter, A., Wilson, B., Diab, M., Caliskan, A."
+    venue: "NAACL 2025"
+    year: 2025
+    url: "https://arxiv.org/abs/2502.07957"
+    core_claim: "Across 131 CLIP models, pre-training dataset choice is the most significant predictor of intrinsic bias (not architecture), and bias correlates with downstream performance (0.3 <= r <= 0.8)."
+    datasets:
+      - "131 CLIP model variants"
+      - "26 Embedding Association Tests"
+    baselines:
+      - "architectural comparisons"
+      - "dataset comparisons"
+    code_released: false
+    code_url: ""
+    relevance: "Motivates investigating whether SAE demographic features are driven by data or architecture; directly relevant to interpreting Contribution A results."
+
+  - id: ghate2025propagate
+    title: "Biases Propagate in Encoder-based Vision-Language Models: A Systematic Analysis From Intrinsic Measures to Zero-shot Retrieval Outcomes"
+    authors: "Ghate, K., Charlesworth, T., Diab, M., Caliskan, A."
+    venue: "ACL Findings 2025"
+    year: 2025
+    url: "https://arxiv.org/abs/2506.06506"
+    core_claim: "Intrinsic VLM bias propagates to downstream tasks with rho = 0.83; larger, better-performing models propagate more bias."
+    datasets:
+      - "LLaVA"
+      - "CLIP variants"
+    baselines:
+      - "model size ablations"
+    code_released: false
+    code_url: ""
+    relevance: "Establishes that VE bias causes downstream harm; our causal tracing (Contribution B) provides a mechanistic explanation of this propagation pathway via SAE features."
+
+  - id: krug2025intersectional
+    title: "Assessing Intersectional Bias in Representations of Pre-Trained Image Recognition Models"
+    authors: "Krug, A., Stober, S."
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2506.03664"
+    core_claim: "Linear probes on ImageNet classifiers reveal intersectional bias patterns; flags intersectional analysis as an open problem for interpretability methods."
+    datasets:
+      - "ImageNet"
+      - "FairFace"
+    baselines:
+      - "single-attribute probes"
+    code_released: false
+    code_url: ""
+    relevance: "Directly motivates Contribution C (intersectional SAE analysis). Krug & Stober use linear probes; we extend this with SAE feature decomposition and ANOVA interaction testing."
+
+  # ===========================================================================
+  # 7.5  Causal Tracing and Activation Patching in VLMs
+  # ===========================================================================
+
+  - id: gandelsman2025causal
+    title: "Causal Tracing of Object Representations in Large Vision Language Models"
+    authors: "Gandelsman, Y. et al."
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2511.05923"
+    core_claim: "Fine-grained cross-modal causal tracing (FCCT) reveals how visual and textual tokens interact across attention and FFN layers in VLMs."
+    datasets:
+      - "VQA benchmarks"
+      - "object recognition datasets"
+    baselines:
+      - "ablation studies"
+      - "attention visualization"
+    code_released: false
+    code_url: ""
+    relevance: "Key methodological precedent for Contribution B; our approach differs by intervening at the SAE feature level (sparse, interpretable) rather than raw hidden states."
+
+  - id: chien2025mint
+    title: "MINT: Causally Tracing Information Fusion in Multimodal Large Language Models"
+    authors: "Chien, S.-H., Sui, Y., Chen, H."
+    venue: "ICLR 2026 (submitted)"
+    year: 2025
+    url: "https://openreview.net/forum?id=zyu1tXMcbh"
+    core_claim: "Hidden state patching creates causal maps of multimodal processing, identifying a 'fusion band' of decoder layers where vision and language signals are combined."
+    datasets:
+      - "LLaVA-1.5-7B"
+      - "DeepSeek-VL2-Tiny"
+      - "Qwen2-VL-7B"
+    baselines:
+      - "uniform LoRA"
+      - "full fine-tuning"
+    code_released: false
+    code_url: ""
+    relevance: "Identifies where multimodal fusion happens in VLM decoders; our vision-tower hook intervenes upstream of this fusion band."
+
+  - id: conmy2023activation
+    title: "Towards Best Practices of Activation Patching in Language Models"
+    authors: "Conmy, A., Mavor-Parker, A., Lynch, A., Heimersheim, S., Garriga-Alonso, A."
+    venue: "arXiv"
+    year: 2023
+    url: "https://arxiv.org/abs/2309.16042"
+    core_claim: "Systematic comparison of activation patching variants (noising, mean ablation, zero ablation) with practical guidance on when each is appropriate."
+    datasets:
+      - "GPT-2 activations"
+      - "IOI task"
+    baselines:
+      - "zero ablation"
+      - "mean ablation"
+      - "noising"
+    code_released: false
+    code_url: ""
+    relevance: "Methodological best practices for activation patching; informs our SAEInterventionHook design choice of encode-modify-decode over raw ablation."
+
+  - id: kharlapenko2025circuits
+    title: "Scaling Sparse Feature Circuits For Studying In-Context Learning"
+    authors: "Kharlapenko, D. et al."
+    venue: "ICML 2025"
+    year: 2025
+    url: "https://arxiv.org/abs/2504.13756"
+    core_claim: "SAE feature circuits scaled to Gemma 2B reveal task-detecting and task-execution features causally linked through attention and MLP sublayers."
+    datasets:
+      - "Gemma 1 2B activations"
+      - "ICL benchmarks"
+    baselines:
+      - "task vector analysis"
+    code_released: false
+    code_url: ""
+    relevance: "Validates SAEs for causal circuit discovery at scale; our SDF pipeline identifies analogous 'demographic-detecting' features."
+
+  # ===========================================================================
+  # 7.6  Concept Erasure and Debiasing Methods
+  # ===========================================================================
+
+  - id: ravfogel2022leace
+    title: "Linear Adversarial Concept Erasure"
+    authors: "Ravfogel, S., Twiton, M., Goldberg, Y., Cotterell, R."
+    venue: "ICML 2022"
+    year: 2022
+    url: "https://arxiv.org/abs/2201.12091"
+    core_claim: "Closed-form linear projection (LEACE/RLACE) removes target concepts from representations, preventing any linear classifier from recovering them."
+    datasets:
+      - "GloVe embeddings"
+      - "BERT embeddings"
+    baselines:
+      - "INLP"
+      - "DeBIAS"
+    code_released: true
+    code_url: "https://github.com/shauli-ravfogel/rlace-icml"
+    relevance: "IDARVE uses LEACE via the concept-erasure library as one of four intervention baselines in src/intervene.py."
+
+  - id: zhan2025splince
+    title: "SPLINCE: Simultaneous Projection for LINear Concept Removal and Covariance Preservation"
+    authors: "Zhan, H. et al."
+    venue: "NeurIPS 2025"
+    year: 2025
+    url: "https://arxiv.org/abs/2506.10703"
+    core_claim: "Oblique (non-orthogonal) projection improves on LEACE by preserving task-relevant covariance structure during concept erasure."
+    datasets:
+      - "BERT embeddings"
+      - "vision embeddings"
+    baselines:
+      - "LEACE"
+      - "INLP"
+    code_released: false
+    code_url: ""
+    relevance: "Potential upgrade to our LEACE baseline; preserving covariance may reduce collateral damage when erasing demographic concepts from VE representations."
+
+  # ===========================================================================
+  # 7.7  Representation Similarity
+  # ===========================================================================
+
+  - id: kornblith2019cka
+    title: "Similarity of Neural Network Representations Revisited"
+    authors: "Kornblith, S., Norouzi, M., Lee, H., Hinton, G."
+    venue: "ICML 2019"
+    year: 2019
+    url: "https://arxiv.org/abs/1905.00414"
+    core_claim: "Centered Kernel Alignment (CKA) overcomes CCA's dimensionality limitations and reliably identifies correspondences between representations across initializations and architectures."
+    datasets:
+      - "CIFAR-10"
+      - "ImageNet"
+    baselines:
+      - "CCA"
+      - "SVCCA"
+      - "PWCCA"
+    code_released: true
+    code_url: "https://github.com/google-research/google-research/tree/master/representation_similarity"
+    relevance: "CKA is the primary similarity metric in Contribution A (cross_encoder.py) for comparing SAE activation matrices across vision encoders."
+
+  - id: golub2013matrix
+    title: "Matrix Computations"
+    authors: "Golub, G. H., Van Loan, C. F."
+    venue: "Johns Hopkins University Press (4th edition)"
+    year: 2013
+    url: "https://jhupbooks.press.jhu.edu/title/matrix-computations"
+    core_claim: "Comprehensive reference for numerical linear algebra, including principal angle computation between subspaces (Section 6.4.3)."
+    datasets: []
+    baselines: []
+    code_released: false
+    code_url: ""
+    relevance: "Principal angle algorithm (QR + SVD) used in demographic_subspace_similarity() in cross_encoder.py."
+
+  # ===========================================================================
+  # 7.8  Evaluation Metrics
+  # ===========================================================================
+
+  - id: zhang2020bertscore
+    title: "BERTScore: Evaluating Text Generation with BERT"
+    authors: "Zhang, T., Kishore, V., Wu, F., Weinberger, K. Q., Artzi, Y."
+    venue: "ICLR 2020"
+    year: 2020
+    url: "https://arxiv.org/abs/1904.09675"
+    core_claim: "Token-level cosine similarity with contextualised BERT embeddings correlates with human judgements of text quality better than n-gram metrics."
+    datasets:
+      - "WMT machine translation"
+      - "CNN/DailyMail summarization"
+    baselines:
+      - "BLEU"
+      - "ROUGE"
+      - "METEOR"
+    code_released: true
+    code_url: "https://github.com/Tiiiger/bert_score"
+    relevance: "Used in Contribution B (causal_eval.py) to measure semantic preservation between original and modified captions under SAE intervention."
+
+  - id: panzeri1996bias
+    title: "Analytical estimates of limited sampling biases in different information measures"
+    authors: "Panzeri, S., Treves, A."
+    venue: "Network: Computation in Neural Systems, 7(1)"
+    year: 1996
+    url: "https://doi.org/10.1088/0954-898X_7_1_006"
+    core_claim: "Analytical bias correction formula (|X|-1)(|Y|-1)/(2*N*ln2) for mutual information estimation from finite samples."
+    datasets: []
+    baselines: []
+    code_released: false
+    code_url: ""
+    relevance: "Bias correction applied in _binned_mi() in intersectional.py for information decomposition (Contribution C)."
+
+  - id: sasse2024debiasae
+    title: "debiaSAE: Benchmarking and Mitigating Vision-Language Model Bias"
+    authors: "Sasse, K., Chen, S., Pond, J., Bitterman, D., Osborne, J."
+    venue: "arXiv"
+    year: 2024
+    url: "https://arxiv.org/abs/2410.13146"
+    core_claim: "SAE-based debiasing improves VLM fairness by 5-15 points; portrait datasets (CelebA, UTKFace) are best for bias detection."
+    datasets:
+      - "CelebA"
+      - "UTKFace"
+      - "FairFace"
+      - "PATA"
+      - "VLStereoSet"
+      - "VisoGender"
+    baselines:
+      - "LLaVA"
+      - "CLIP"
+    code_released: true
+    code_url: "https://github.com/KuleenS/VLMBiasEval"
+    relevance: "Most direct competitor for SAE-based VLM debiasing. Our bottleneck finding challenges whether their 5-15pp gains are from targeted features or reconstruction error."
+
+  - id: barbalau2025sp
+    title: "Rethinking Sparse Autoencoders: Select-and-Project for Fairness and Control from Encoder Features Alone"
+    authors: "Bărbălau, A., Păduraru, C. D., Poncu, T., Tifrea, A., Burceanu, E."
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2509.10809"
+    core_claim: "Encoder-centric S&P Top-K projection achieves 3.2x fairness improvement on CelebA/FairFace and 1.8x over SOTA test-time debiasing."
+    datasets:
+      - "CelebA"
+      - "FairFace"
+    baselines:
+      - "Conventional SAE decoder-centric steering"
+      - "Test-time debiasing baselines"
+    code_released: true
+    code_url: ""
+    relevance: "We implemented and tested S&P Top-K on VLM generation; found zero downstream effect, contradicting their classification/retrieval results. Task-dependent discrepancy."
+
+  - id: prabhu2025sae_vlm
+    title: "Sparse Autoencoders Learn Monosemantic Features in Vision-Language Models"
+    authors: "Prabhu, A. et al."
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2504.02821"
+    core_claim: "SAEs on CLIP enhance monosemanticity; SAE interventions on vision encoder steer LLaVA outputs without LLM modification."
+    datasets:
+      - "CLIP benchmarks"
+      - "iNaturalist"
+    baselines:
+      - "Base CLIP neurons"
+    code_released: true
+    code_url: "https://github.com/ExplainableML/sae-for-vlm"
+    relevance: "Same VLM steering paradigm as our Contribution B but focused on general concepts, not demographics. Does not document reconstruction error confound."
+
+  - id: joseph2025steering_clip
+    title: "Steering CLIP's vision transformer with sparse autoencoders"
+    authors: "Joseph, S. et al."
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2504.08729"
+    core_claim: "10-15% of CLIP ViT features are steerable; SAEs provide thousands more steerable features than base model."
+    datasets:
+      - "CelebA"
+      - "Waterbirds"
+    baselines:
+      - "Base model neurons"
+    code_released: true
+    code_url: ""
+    relevance: "Concurrent work on SAE steerability in vision models. CelebA demographic disentanglement experiments overlap with our feature discovery."
+
+  - id: stevens2025interpretable_vision
+    title: "Interpretable and Testable Vision Features via Sparse Autoencoders"
+    authors: "Stevens, S., Chao, W.-L., Berger-Wolf, T., Su, J.-C."
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2502.06755"
+    core_claim: "Single SAE on frozen ViT enables patch-level causal edits across classification and segmentation without retraining."
+    datasets:
+      - "ImageNet"
+    baselines:
+      - "Standard ViT features"
+    code_released: true
+    code_url: ""
+    relevance: "Related vision SAE interpretability work; different scope (general vision, not demographics/VLMs)."
+
+  - id: zhang2025joint_vl_bias
+    title: "Joint Vision-Language Social Bias Removal for CLIP"
+    authors: "Zhang et al."
+    venue: "CVPR 2025"
+    year: 2025
+    url: "https://openaccess.thecvf.com/content/CVPR2025/papers/Zhang_Joint_Vision-Language_Social_Bias_Removal_for_CLIP_CVPR_2025_paper.pdf"
+    core_claim: "Joint image+text embedding debiasing avoids over-debiasing problem of modality-separate approaches."
+    datasets:
+      - "CLIP fairness benchmarks"
+    baselines:
+      - "Modality-separate debiasing"
+    code_released: false
+    code_url: ""
+    relevance: "CVPR 2025 debiasing paper; different approach (embedding alignment) but same problem space."
+
+  - id: bendvlm2024
+    title: "BendVLM: Test-Time Debiasing of Vision-Language Models by Bending Their Representations"
+    authors: "Anonymous"
+    venue: "arXiv"
+    year: 2024
+    url: "https://arxiv.org/abs/2411.04420"
+    core_claim: "Fine-tuning-free nonlinear debiasing tailored to individual inputs; avoids catastrophic forgetting."
+    datasets:
+      - "CelebA"
+      - "FairFace"
+    baselines:
+      - "Linear debiasing"
+      - "Fine-tuning approaches"
+    code_released: false
+    code_url: ""
+    relevance: "Nonlinear alternative to our linear methods (LEACE, S&P). Could serve as baseline comparison."
+
+  - id: sfid2024
+    title: "SFID: Selective Feature Imputation for Debiasing"
+    authors: "Anonymous"
+    venue: "arXiv"
+    year: 2024
+    url: "https://arxiv.org/abs/2410.07593"
+    core_claim: "Feature pruning + low-confidence imputation reduces gender bias across diverse VLM tasks without retraining."
+    datasets:
+      - "Multiple VLM benchmarks"
+    baselines:
+      - "Standard VLM inference"
+    code_released: false
+    code_url: ""
+    relevance: "Cross-task debiasing approach; different mechanism (pruning+imputation vs. projection/suppression)."
+
+  - id: fcct2025causal_tracing
+    title: "Causal Tracing of Object Representations in Large Vision Language Models"
+    authors: "Anonymous"
+    venue: "arXiv"
+    year: 2025
+    url: "https://arxiv.org/abs/2511.05923"
+    core_claim: "Fine-grained cross-modal causal tracing reveals middle-layer MHA aggregates cross-modal info; proposes IRI for hallucination mitigation."
+    datasets:
+      - "VLM hallucination benchmarks"
+    baselines:
+      - "Standard VLM inference"
+    code_released: false
+    code_url: ""
+    relevance: "Causal tracing methodology for VLMs; focused on hallucination not demographics, but shares the mechanistic interpretability approach."

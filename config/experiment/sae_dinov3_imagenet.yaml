@@ -1,0 +1,17 @@
+# @package _global_
+
+# Experiment: Train BatchTopK SAE on DINOv3 ImageNet latents
+# Usage: python -m src.main +experiment=sae_dinov3_imagenet
+
+defaults:
+  - override /model: sae_dinov3
+  - override /data: imagenet_dinov3
+  - override /module: sae
+
+trainer:
+  max_epochs: 10
+  precision: 16-mixed
+
+wandb:
+  project: idarve
+  enabled: true

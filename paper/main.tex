@@ -1,0 +1,53 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{natbib}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{nicefrac}
+% \usepackage{microtype} % disabled: requires scalable fonts
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{subcaption}
+\usepackage{xspace}
+
+% Custom commands
+\newcommand{\method}{IDARVE\xspace}
+\newcommand{\pg}{PaliGemma2\xspace}
+\newcommand{\qii}{Qwen2-VL\xspace}
+\newcommand{\qiii}{Qwen3-VL\xspace}
+\newcommand{\pp}{\,pp}
+\newcommand{\dcr}{\text{DCR}}
+
+\title{Decomposing SAE-Based Debiasing:\\Reconstruction Error Dominates Targeted Suppression\\in Vision-Language Models}
+
+\author{
+  Ozan Bayiz \\
+  \texttt{ozanbayiz@example.edu}
+}
+
+\begin{document}
+
+\maketitle
+
+\input{sections/abstract}
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/method}
+\input{sections/experiments}
+\input{sections/discussion}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\newpage
+\appendix
+\input{sections/appendix}
+
+\end{document}

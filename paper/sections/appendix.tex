@@ -1,0 +1,108 @@
+\section{Experimental Details}
+\label{app:details}
+
+\subsection{SAE Training Hyperparameters}
+
+All SAEs use the BatchTopK architecture~\citep{bussmann2024batchtopk} with dictionary size $= 4 \times d$ and $k{=}64$. Training uses the Adam optimiser with learning rate $3 \times 10^{-4}$, batch size 128, for 10 epochs on FairFace training set latents (73{,}732 images). Table~\ref{tab:sae-details} reports reconstruction quality on the validation set (13{,}012 images).
+
+\begin{table}[h]
+\centering
+\caption{SAE reconstruction quality by model.}
+\label{tab:sae-details}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{VLM} & \textbf{Input dim} & \textbf{Dict size} & \textbf{Cosine sim} & \textbf{Dead features (\%)} \\
+\midrule
+\pg & 1152 & 4608 & 0.945 & 0.07\% \\
+\qii & 1536 & 6144 & 0.959 & 1.2\% \\
+\qiii & 2048 & 8192 & 0.975 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{SDF Discovery Pipeline Details}
+
+For each demographic attribute with $C$ classes, we identify 50 candidate SDFs per class using a three-stage pipeline:
+
+\begin{enumerate}
+    \item \textbf{Frequency filter}: Retain features that activate (value $> 0$) in $>$10\% of samples from at least one class.
+    \item \textbf{Mean-activation ranking}: For each class $c$, compute the mean activation $\bar{a}_{c,j}$ of feature $j$ across all samples with label $c$. Rank features by $\max_c \bar{a}_{c,j} / (\min_c \bar{a}_{c,j} + \epsilon)$ and retain the top 50 per class.
+    \item \textbf{Entropy filter}: Compute the Shannon entropy of each feature's class-conditional activation distribution. Retain features with entropy below the median (high discriminability).
+\end{enumerate}
+
+After deduplication across classes, this yields 50--80 unique SDFs per attribute. We measure \emph{alignment rate}: the fraction of SDFs that have significantly different mean activations across demographic classes (Kruskal-Wallis $p < 0.05$). Alignment rates range from 0.185 (age) to 0.550 (gender) across models, indicating that gender is most cleanly encoded in the SAE feature space.
+
+\subsection{LEACE Implementation}
+
+We use the \texttt{concept-erasure} library~\citep{belrose2023leace} to fit a LeaceEraser on mean-pooled VE latents (averaged across the token dimension) with demographic labels. The eraser is applied per-token during VLM inference via a forward hook on the vision encoder output. For binary attributes (gender), LEACE removes a rank-1 subspace; for multi-class attributes (race: 7 classes, age: 9 classes), it removes a rank-$(C{-}1)$ subspace.
+
+\paragraph{Mean-pooled fitting, per-token application.} We fit the LEACE projection on mean-pooled VE features because demographic labels are image-level (not token-level). The resulting projection is then applied identically to each visual token during inference. This assumes the concept direction is shared across spatial positions. On \pg, the high BERTScore (0.974) and cosine similarity (0.9991) under LEACE confirm that this approximation introduces minimal distortion. However, if demographic information is encoded differently across spatial tokens (e.g., concentrated in face-region tokens), the mean-pooled projection may incompletely erase the concept at the token level. This could contribute to LEACE's limited captioning effect on \pg, in addition to the nonlinear encoding hypothesis discussed in Section~\ref{sec:leace}.
+
+\subsection{LLM Judge Implementation}
+
+\paragraph{Binary classification (Qwen3-8B).} Each caption is evaluated independently with the prompt: ``Does the following caption mention or imply anything about the [attribute] of the person(s) described? Answer only YES or NO.'' We compute LLM-DCR as the fraction of ``YES'' responses.
+
+\paragraph{Pairwise comparison (JudgeLRM-7B).} Original and modified captions are presented side-by-side (order randomised) with the prompt: ``Which caption contains more information about the [attribute] of the person(s) described? Answer A, B, or TIE.'' Position bias is controlled by randomisation with a fixed seed.
+
+Both judges achieve 0\% parse failure rate across all evaluations (0 / 54{,}000+ binary prompts; 0 / 26{,}100+ pairwise prompts).
+
+\section{Additional Results}
+\label{app:additional}
+
+\subsection{Dose-Response Under Feature Amplification}
+
+\begin{table}[h]
+\centering
+\caption{Gender DCR delta under feature amplification (\pg, $n{=}500$).}
+\label{tab:amplification}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Alpha} & \textbf{Gender $\Delta\dcr$} & \textbf{Race $\Delta\dcr$} & \textbf{BERTScore} \\
+\midrule
+0 (suppress) & $-27.6\pp$ & $-2.8\pp$ & 0.932 \\
+1 (passthrough) & $-21.0\pp$ & $-4.6\pp$ & 0.933 \\
+3 (amplify) & $-17.4\pp$ & $-2.8\pp$ & 0.920 \\
+5 (amplify) & $-25.4\pp$ & $-3.2\pp$ & 0.910 \\
+10 (amplify) & $-69.4\pp$ & $+2.8\pp$ & 0.888 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All amplification levels produce negative gender DCR deltas (Table~\ref{tab:amplification}), which is initially counterintuitive: amplifying gender-aligned features should increase gender content. However, all conditions pass through the SAE bottleneck, which imposes a baseline $\sim$21\pp reduction (alpha=1 passthrough). The dose-response is non-monotonic: moderate amplification (alpha=3) partially compensates for the bottleneck ($-17.4\pp$ vs.\ $-21.0\pp$ for passthrough), while extreme amplification (alpha=10) overwhelms the language model's capacity to integrate the exaggerated features, producing $-69.4\pp$ reduction. This pattern reinforces the interpretation that the SAE bottleneck is the dominant mechanism: even amplification cannot fully overcome the information loss from sparse reconstruction on \pg.
+
+\subsection{Intersectional Analysis}
+
+ANOVA interaction effects across 177 intersectional SDFs (age $\times$ gender $\times$ race): 0/177 features pass the strict criterion (Bonferroni $p < 0.05$ AND partial $\eta^2 > 0.01$). Mutual information decomposition reveals mean synergy of $-0.007$ bits (redundancy dominates). The SAE learns disentangled, additive representations of demographics---intersectional interactions exist statistically but explain negligible variance.
+
+\subsection{Race-Gender Feature Entanglement}
+
+Ablation of which race SDFs drive gender DCR changes on \pg: the 20 ``universal demographic detector'' features (shared across all 7 race classes) account for 90\% of the incremental gender DCR effect ($-7.2\pp$ vs.\ $-0.8\pp$ for 20 class-specific features). This confirms that race-gender entanglement is encoded in features detecting demographic salience generally, not race-specific features.
+
+\subsection{Qualitative Analysis of the \qii Reverse Effect}
+\label{app:q2vl-qualitative}
+
+Table~\ref{tab:q2vl-examples} shows representative examples of the opposite-direction effect on \qii (Section~\ref{sec:cross-model}). Of 500 samples under gender SDF suppression, 127 (25.4\%) \emph{gained} gender-specific language while only 8 (1.6\%) lost it. The dominant pattern is clear: \qii's original captions use neutral language (``a person,'' ``the child,'' ``the individual'') that is replaced by gendered descriptions (``a man,'' ``a boy,'' ``he'') after suppression. In several cases (samples 9, 25, 71), the model assigns the \emph{incorrect} gender, and in others (sample 21), the model hallucinates entirely new scene content. This is consistent with SAE reconstruction disrupting the visual features that support the model's neutral-language strategy, causing fallback to more specific (and often inaccurate) descriptions.
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Qualitative examples of the \qii reverse effect.} Gender SDF suppression converts neutral captions into gendered ones. Ground-truth gender labels shown for reference; suppressed captions sometimes assign the wrong gender.}
+\label{tab:q2vl-examples}
+\small
+\begin{tabular}{p{0.06\textwidth}p{0.42\textwidth}p{0.42\textwidth}}
+\toprule
+\textbf{Label} & \textbf{Original caption} & \textbf{After gender SDF suppression} \\
+\midrule
+Male, 40s & The image shows \textbf{a person} wearing glasses and a jacket. The background is blurred\ldots & The image shows \textbf{a man} wearing a pair of glasses and a suit. \textbf{He} is holding a small object\ldots \\
+\midrule
+Female, 20s & The image shows a blurred face of \textbf{a person}. The individual appears to be wearing earrings\ldots & The individual appears to be \textbf{a man} with short hair and is wearing earrings\ldots \\
+\midrule
+Female, 60s & The image shows a close-up of \textbf{a person's} face. The individual appears to be elderly\ldots & A close-up of a person's face, likely \textbf{a man}, with a serious expression. The person has short, neatly combed hair\ldots \\
+\midrule
+Female, 30s & \textbf{The individual} has a fair complexion and is wearing a blue top\ldots & The individual appears to be \textbf{a man} with short hair, wearing a light-colored shirt\ldots \\
+\midrule
+Male, 30s & The image shows \textbf{a close-up of a person's face}. The individual has short, dark hair and is smiling\ldots & A close-up of \textbf{a man's face}\ldots \textbf{He} appears to be smiling and is wearing a light-colored shirt\ldots \\
+\bottomrule
+\end{tabular}
+\end{table}

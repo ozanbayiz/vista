@@ -1,0 +1,17 @@
+# @package _global_
+
+# Experiment: Train BatchTopK SAE on PaliGemma2 ImageNet latents
+# Usage: python -m src.main +experiment=sae_paligemma2_imagenet
+
+defaults:
+  - override /model: sae_paligemma2
+  - override /data: imagenet_paligemma2
+  - override /module: sae
+
+trainer:
+  max_epochs: 10
+  precision: 16-mixed
+
+wandb:
+  project: idarve
+  enabled: true

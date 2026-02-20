@@ -1,0 +1,17 @@
+# @package _global_
+
+# Experiment: Train 8x BatchTopK SAE on PaliGemma2 FairFace latents
+# Usage: python -m src.main +experiment=sae_paligemma2_8x_fairface
+
+defaults:
+  - override /model: sae_paligemma2_8x
+  - override /data: fairface_paligemma2_no_labels
+  - override /module: sae
+
+trainer:
+  max_epochs: 10
+  precision: 16-mixed
+
+wandb:
+  project: idarve
+  enabled: true

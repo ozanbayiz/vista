@@ -1,0 +1,71 @@
+\section{Method}
+\label{sec:method}
+
+We study how demographic information flows from vision encoder (VE) representations through vision-language models to generated text. Our framework consists of four stages: (1) extract VE latents, (2) train SAEs and identify demographic features, (3) intervene on VE activations via forward hooks during VLM inference, and (4) evaluate the downstream effect on generated text.
+
+\subsection{Vision Encoder Latent Extraction}
+\label{sec:ve-extraction}
+
+For each VLM, we extract vision encoder activations from the FairFace dataset~\citep{karkkainen2021fairface}, which contains $\sim$87K face images annotated for age (9 classes), gender (2 classes), and race (7 classes). We process each image through the VLM's vision encoder and store the resulting token-level activations $\mathbf{H} \in \mathbb{R}^{T \times d}$, where $T$ is the number of visual tokens and $d$ is the hidden dimension. Table~\ref{tab:models} summarises the three VLMs and their vision encoder architectures.
+
+\begin{table}[t]
+\centering
+\caption{Vision-language models used in experiments.}
+\label{tab:models}
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{VLM} & \textbf{VE Architecture} & \textbf{VE dim} & \textbf{Tokens} & \textbf{SAE dim} & \textbf{Recon.\ cos sim} \\
+\midrule
+\pg 3B & SigLIP ViT & 1152 & 1024 & 4608 & 0.945 \\
+\qii 2B & Custom ViT & 1536 & 64 & 6144 & 0.959 \\
+\qiii 2B & DeepStack ViT & 2048 & 196 & 8192 & 0.975 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{SAE Training and Demographic Feature Discovery}
+\label{sec:sae-sdf}
+
+We train BatchTopK SAEs~\citep{bussmann2024batchtopk} on the extracted VE latents. Each SAE maps a $d$-dimensional input to a $4d$-dimensional sparse code via:
+\begin{equation}
+    \mathbf{z} = \text{TopK}\bigl(\text{ReLU}(\mathbf{W}_{\text{enc}}\,\mathbf{x} + \mathbf{b}_{\text{enc}}),\; k\bigr), \qquad
+    \hat{\mathbf{x}} = \mathbf{W}_{\text{dec}}\,\mathbf{z} + \mathbf{b}_{\text{dec}},
+\end{equation}
+where $\text{TopK}(\cdot, k)$ retains only the $k$ largest activations and zeros the rest ($k{=}64$ for all models).
+
+To identify \textbf{sparse dictionary features} (SDFs) aligned with demographic attributes, we use a three-stage filtering pipeline:
+\begin{enumerate}
+    \item \textbf{Frequency filtering}: Select features that activate in $>$10\% of samples from at least one demographic class.
+    \item \textbf{Mean-activation filtering}: Rank features by the ratio of their highest class-conditional mean activation to their lowest, retaining the top 50 per class.
+    \item \textbf{Entropy filtering}: Among candidates, select features with high inter-class variance (low entropy), prioritising features that discriminate between demographic groups.
+\end{enumerate}
+This yields 50--80 unique SDFs per attribute per model (e.g., 56 gender SDFs for \pg, 59 for \qiii).
+
+\subsection{Intervention Methods}
+\label{sec:interventions}
+
+All interventions are applied via forward hooks on the VLM's vision encoder output during inference, modifying activations before they reach the language model. We compare six intervention methods, ordered by their degree of perturbation:
+
+\paragraph{1. Noise perturbation.} We add Gaussian noise $\boldsymbol{\epsilon} \sim \mathcal{N}(\mathbf{0}, \sigma^2\mathbf{I})$ directly to VE activations, where $\sigma$ is calibrated to match the magnitude of SAE reconstruction error. This isolates the effect of generic perturbation at the same scale.
+
+\paragraph{2. SAE passthrough.} Activations are encoded through the SAE and decoded \emph{without modifying any features}: $\hat{\mathbf{x}} = \text{Dec}(\text{Enc}(\mathbf{x}))$. This isolates the structured information bottleneck imposed by SAE reconstruction.
+
+\paragraph{3. Random feature suppression.} Same as passthrough, but $m$ randomly selected non-SDF features are zeroed after encoding. This controls for the effect of zeroing \emph{any} features, regardless of their demographic alignment.
+
+\paragraph{4. Targeted SDF suppression.} The $m$ identified SDFs for a target attribute are zeroed after SAE encoding: $z_i = 0$ for all $i \in \mathcal{S}_{\text{attr}}$. This is the standard approach in prior work~\citep{sasse2024debias}.
+
+\paragraph{5. LEACE erasure.} We fit a Least-squares Concept Erasure projector~\citep{belrose2023leace} on mean-pooled VE latents and their demographic labels, then apply the projection to each visual token during inference. LEACE removes the complete linear concept subspace without introducing reconstruction error.
+
+\paragraph{6. S\&P Top-K projection.} Following \citet{barbalau2025select}, we compute a rank-1 concept direction from the SAE encoder weights of the top-$k$ SDFs and orthogonally project VE activations to remove this direction.
+
+\subsection{Evaluation}
+\label{sec:evaluation}
+
+We evaluate interventions on two downstream tasks:
+
+\paragraph{Image captioning.} We prompt the VLM with ``Describe this image'' and measure demographic content rate (DCR)---the fraction of captions that mention a given attribute---using keyword matching. We report DCR delta ($\Delta\dcr = \dcr_\text{modified} - \dcr_\text{original}$) on the same images with and without intervention. To address keyword limitations, we independently evaluate with an LLM-as-judge (Section~\ref{sec:llm-judge}).
+
+\paragraph{Visual question answering (VQA).} We ask direct demographic questions (e.g., ``What is the gender of the person in this image?'') and measure accuracy change under intervention. This provides a complementary metric that is robust to captioning style differences.
+
+We additionally report BERTScore~\citep{zhang2020bertscore} F1 between original and modified captions as a measure of overall text quality preservation, and compute 95\% bootstrap confidence intervals (10{,}000 resamples) for all effect sizes.

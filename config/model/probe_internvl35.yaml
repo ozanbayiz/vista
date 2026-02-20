@@ -1,0 +1,4 @@
+input_size: 1024
+age_classes: 9
+gender_classes: 2
+race_classes: 7

@@ -1,0 +1,354 @@
+# ============================================================================
+# Related Work References — Verification Log
+# Generated: 2025-02-14
+#
+# Each entry records the CLAIMED citation vs. what was ACTUALLY found.
+# Status values:
+#   VERIFIED            — paper exists, all details match
+#   PARTIALLY_VERIFIED  — paper exists, but some metadata (usually authors) is wrong
+#   NOT_FOUND           — no matching paper could be located
+#
+# Overall: 29 papers checked, 13 VERIFIED, 16 PARTIALLY_VERIFIED, 0 NOT_FOUND
+# ============================================================================
+
+section_7_1_saes_on_vision_models:
+
+  - id: "7.1.1"
+    status: VERIFIED
+    claimed_authors: "Olson, M. L. et al."
+    actual_authors: "Matthew Lyle Olson, Musashi Hinck, Neale Ratzlaff, Changbai Li, Phillip Howard, Vasudev Lal, Shao-Yen Tseng"
+    claimed_title: "Probing the Representational Power of Sparse Autoencoders in Vision Models"
+    actual_title: "Probing the Representational Power of Sparse Autoencoders in Vision Models"
+    claimed_venue: "ICCV 2025 Workshop Findings"
+    actual_venue: "ICCV 2025 (confirmed via CVF Open Access)"
+    arxiv: "2508.11277"
+    notes: "All details confirmed."
+
+  - id: "7.1.2"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Rao, A. et al."
+    actual_authors: "Mateusz Pach, Shyamgopal Karthik, Quentin Bouniot, Serge Belongie, Zeynep Akata"
+    claimed_title: "Sparse Autoencoders Learn Monosemantic Features in Vision-Language Models"
+    actual_title: "Sparse Autoencoders Learn Monosemantic Features in Vision-Language Models"
+    claimed_venue: "NeurIPS 2025"
+    actual_venue: "Plausible NeurIPS 2025 (submitted Apr 2025, revised Nov 2025)"
+    arxiv: "2504.02821"
+    notes: "Title and arXiv ID correct. Authors are entirely wrong — no 'Rao' among authors."
+
+  - id: "7.1.3"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Rao, A. et al."
+    actual_authors: "Sonia Joseph, Praneet Suresh, Ethan Goldfarb, Lorenz Hufe, Yossi Gandelsman, Robert Graham, Danilo Bzdok, Wojciech Samek, Blake Aaron Richards"
+    claimed_title: "Steering CLIP's Vision Transformer with Sparse Autoencoders"
+    actual_title: "Steering CLIP's Vision Transformer with Sparse Autoencoders"
+    claimed_venue: "CVPR 2025 Workshop on Mechanistic Interpretability for Vision"
+    actual_venue: "Plausible (submitted Apr 2025)"
+    arxiv: "2504.08729"
+    notes: "Title and arXiv ID correct. Authors are entirely wrong — no 'Rao' among authors."
+
+  - id: "7.1.4"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Gorton, L. et al."
+    actual_authors: "Samuel Stevens, Wei-Lun Chao, Tanya Berger-Wolf, Yu Su"
+    claimed_title: "Interpretable and Testable Vision Features via Sparse Autoencoders"
+    actual_title: "Interpretable and Testable Vision Features via Sparse Autoencoders"
+    claimed_venue: "February 2025"
+    actual_venue: "Submitted Feb 10, 2025"
+    arxiv: "2502.06755"
+    notes: "Title and arXiv ID correct. Authors are entirely wrong — no 'Gorton' among authors."
+
+  - id: "7.1.5"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Oldenburg, L. et al."
+    actual_authors: "Ali Nasiri-Sarvi, Hassan Rivaz, Mahdi S. Hosseini"
+    claimed_title: "SPARC: Sparse Autoencoders for Aligned Representation of Concepts"
+    actual_title: "SPARC: Concept-Aligned Sparse Autoencoders for Cross-Model and Cross-Modal Interpretability"
+    claimed_venue: "July 2025"
+    actual_venue: "Submitted July 7, 2025"
+    arxiv: "2507.06265"
+    notes: "arXiv ID correct. SPARC acronym correct, but full title differs. Authors entirely wrong — no 'Oldenburg' among authors."
+
+  - id: "7.1.6"
+    status: VERIFIED
+    claimed_authors: "Olson, M. L. et al."
+    actual_authors: "Matthew L. Olson, Musashi Hinck, Neale Ratzlaff, Changbai Li, Phillip Howard, Vasudev Lal, Shao-Yen Tseng"
+    claimed_title: "Analyzing Hierarchical Structure in Vision Models with Sparse Autoencoders"
+    actual_title: "Analyzing Hierarchical Structure in Vision Models with Sparse Autoencoders"
+    claimed_venue: "CVPR 2025 Workshop on Mechanistic Interpretability for Vision"
+    actual_venue: "CVPR 2025 Workshop (confirmed via CVF Open Access)"
+    arxiv: null
+    notes: "All details confirmed. Same author group as 7.1.1."
+
+
+section_7_2_sae_methodology_and_limitations:
+
+  - id: "7.2.1"
+    status: VERIFIED
+    claimed_authors: "Bussmann, B. et al."
+    actual_authors: "Bart Bussmann, Patrick Leask, Neel Nanda"
+    claimed_title: "BatchTopK Sparse Autoencoders"
+    actual_title: "BatchTopK Sparse Autoencoders"
+    claimed_venue: "NeurIPS 2024 Workshop on Scientific Methods for Understanding Neural Networks"
+    actual_venue: "Submitted Dec 9, 2024 (NeurIPS 2024 timing)"
+    arxiv: "2412.06410"
+    notes: "All details confirmed."
+
+  - id: "7.2.2"
+    status: VERIFIED
+    claimed_authors: "Bricken, T. et al."
+    actual_authors: "Trenton Bricken et al."
+    claimed_title: "Towards Monosemanticity: Decomposing Language Models With Dictionary Learning"
+    actual_title: "Towards Monosemanticity: Decomposing Language Models With Dictionary Learning"
+    claimed_venue: "Anthropic, 2023"
+    actual_venue: "Published Oct 4, 2023 on anthropic.com and transformer-circuits.pub"
+    arxiv: null
+    notes: "All details confirmed. Blog/research report format, not a traditional venue paper."
+
+  - id: "7.2.3"
+    status: VERIFIED
+    claimed_authors: "Cunningham, H. et al."
+    actual_authors: "Hoagy Cunningham, Aidan Ewart, Logan Riggs, Robert Huben, Lee Sharkey"
+    claimed_title: "Sparse Autoencoders Find Highly Interpretable Features in Language Models"
+    actual_title: "Sparse Autoencoders Find Highly Interpretable Features in Language Models"
+    claimed_venue: "ICLR 2024"
+    actual_venue: "ICLR 2024 (confirmed via proceedings and OpenReview)"
+    arxiv: "2309.08600"
+    notes: "All details confirmed."
+
+  - id: "7.2.4"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Chanin, D. et al."
+    actual_authors: "Patrick Leask, Bart Bussmann, Michael Pearce, Joseph Bloom, Curt Tigges, Noura Al Moubayed, Lee Sharkey, Neel Nanda"
+    claimed_title: "Sparse Autoencoders Do Not Find Canonical Units of Analysis"
+    actual_title: "Sparse Autoencoders Do Not Find Canonical Units of Analysis"
+    claimed_venue: "ICLR 2025"
+    actual_venue: "ICLR 2025 (confirmed via proceedings and OpenReview)"
+    arxiv: "2502.04878"
+    notes: "Title and venue correct. First author wrong — actual first author is Patrick Leask, not Chanin. David Chanin is a real mech-interp researcher but is not on this paper."
+
+
+section_7_3_saes_for_fairness_and_debiasing:
+
+  - id: "7.3.1"
+    status: VERIFIED
+    claimed_authors: "Barbulau, A. et al."
+    actual_authors: "Antonio Bărbălau, C.D. Păduraru, T. Poncu, A. Tifrea, E. Burceanu"
+    claimed_title: "Rethinking Sparse Autoencoders: Select-and-Project for Fairness and Control from Encoder Features Alone"
+    actual_title: "Rethinking Sparse Autoencoders: Select-and-Project for Fairness and Control from Encoder Features Alone"
+    claimed_venue: "NeurIPS 2025 Workshop on Mechanistic Interpretability"
+    actual_venue: "Submitted Sep 2025, revised Dec 2025 (NeurIPS 2025 timing)"
+    arxiv: "2509.10809"
+    notes: "All details confirmed. 'Barbulau' is ASCII transliteration of 'Bărbălau'."
+
+  - id: "7.3.2"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Shao, B. et al."
+    actual_authors: "Sai Sumedh R. Hindupur, E.S. Lubana, T. Fel, D. Ba"
+    claimed_title: "Projecting Assumptions: The Duality Between Sparse Autoencoders and Concept Geometry"
+    actual_title: "Projecting Assumptions: The Duality Between Sparse Autoencoders and Concept Geometry"
+    claimed_venue: "March 2025"
+    actual_venue: "Submitted 3 Mar 2025"
+    arxiv: "2503.01822"
+    notes: "Title and arXiv ID correct. Authors entirely wrong — no 'Shao' among authors."
+
+  - id: "7.3.3"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Li, H. et al."
+    actual_authors: "Nick Jiang, X. Sun, L. Dunlap, L. Smith, N. Nanda"
+    claimed_title: "Interpretable Embeddings with Sparse Autoencoders: A Data Analysis Toolkit"
+    actual_title: "Interpretable Embeddings with Sparse Autoencoders: A Data Analysis Toolkit"
+    claimed_venue: "December 2025"
+    actual_venue: "Submitted 10 Dec 2025"
+    arxiv: "2512.10092"
+    notes: "Title and arXiv ID correct. Authors entirely wrong — no 'Li' among authors."
+
+
+section_7_4_demographic_bias_in_vlms:
+
+  - id: "7.4.1"
+    status: VERIFIED
+    claimed_authors: "Karkkainen, K. & Joo, J."
+    actual_authors: "Kimmo Karkkainen & Jungseock Joo"
+    claimed_title: "FairFace: Face Attribute Dataset for Balanced Race, Gender, and Age for Bias Measurement and Mitigation"
+    actual_title: "FairFace: Face Attribute Dataset for Balanced Race, Gender, and Age for Bias Measurement and Mitigation"
+    claimed_venue: "WACV 2021"
+    actual_venue: "WACV 2021 (CVF/IEEE)"
+    arxiv: "1908.04913"
+    notes: "All details confirmed."
+
+  - id: "7.4.2"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Ruggeri, N. et al."
+    actual_authors: "Zahraa Al Sahili, Ioannis Patras, Matthew Purver"
+    claimed_title: "Data Matters Most: Auditing Social Bias in Contrastive Vision Language Models"
+    actual_title: "Data Matters Most: Auditing Social Bias in Contrastive Vision Language Models"
+    claimed_venue: "January 2025"
+    actual_venue: "Submitted 22 Jan 2025"
+    arxiv: "2501.13223"
+    notes: "Title and arXiv ID correct. Authors entirely wrong — no 'Ruggeri' among authors."
+
+  - id: "7.4.3"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Zhang, D. et al."
+    actual_authors: "Haoyu Zhang, Yangyang Guo, Mohan Kankanhalli"
+    claimed_title: "Joint Vision-Language Social Bias Removal for CLIP"
+    actual_title: "Joint Vision-Language Social Bias Removal for CLIP"
+    claimed_venue: "CVPR 2025"
+    actual_venue: "CVPR 2025 (confirmed via CVF and IEEE Xplore)"
+    arxiv: "2411.12785"
+    notes: "Title and venue correct. First author initial wrong — 'Zhang, H.' (Haoyu), not 'Zhang, D.'"
+
+  - id: "7.4.4"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Seshadri, P. et al."
+    actual_authors: "Kshitish Ghate, Lee Slaughter, Steven Wilson, Mona Diab, Aylin Caliskan"
+    claimed_title: "Intrinsic Bias is Predicted by Pretraining Data and Correlates with Downstream Performance in Vision-Language Encoders"
+    actual_title: "Intrinsic Bias is Predicted by Pretraining Data and Correlates with Downstream Performance in Vision-Language Encoders"
+    claimed_venue: "NAACL 2025"
+    actual_venue: "NAACL 2025, ACL Anthology (2025.naacl-long.148)"
+    arxiv: null
+    notes: "Title and venue correct. Authors entirely wrong — no 'Seshadri' among authors."
+
+  - id: "7.4.5"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Osei, S. et al."
+    actual_authors: "Kshitish Ghate, Tessa Charlesworth, Mona T. Diab, Aylin Caliskan"
+    claimed_title: "Biases Propagate in Encoder-based Vision-Language Models"
+    actual_title: "Biases Propagate in Encoder-based Vision-Language Models: A Systematic Analysis From Intrinsic Measures to Zero-shot Retrieval Outcomes"
+    claimed_venue: "ACL Findings 2025"
+    actual_venue: "ACL Findings 2025, ACL Anthology (2025.findings-acl.955)"
+    arxiv: null
+    notes: "Venue correct, title matches (subtitle omitted). Authors entirely wrong — no 'Osei' among authors. Same lead author (Ghate) as 7.4.4."
+
+  - id: "7.4.6"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Krug, A. & Stober, S."
+    actual_authors: "Valerie Krug & Sebastian Stober"
+    claimed_title: "Assessing Intersectional Bias in Representations of Pre-Trained Image Recognition Models"
+    actual_title: "Assessing Intersectional Bias in Representations of Pre-Trained Image Recognition Models"
+    claimed_venue: "2025"
+    actual_venue: "Submitted 4 Jun 2025"
+    arxiv: "2506.03664"
+    notes: "Title and arXiv ID correct. Stober is correct. First author initial wrong — 'Krug, V.' (Valerie), not 'Krug, A.'"
+
+
+section_7_5_causal_tracing_and_activation_patching:
+
+  - id: "7.5.1"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Gandelsman, Y. et al."
+    actual_authors: "Qiming Li, Zekai Ye, Xiaocheng Feng, Weihong Zhong, Weitao Ma, Xiachong Feng"
+    claimed_title: "Causal Tracing of Object Representations in Large Vision Language Models"
+    actual_title: "Causal Tracing of Object Representations in Large Vision Language Models: Mechanistic Interpretability and Hallucination Mitigation"
+    claimed_venue: "November 2025"
+    actual_venue: "Submitted 8 Nov 2025"
+    arxiv: "2511.05923"
+    notes: "arXiv ID correct, title matches (subtitle omitted). Authors entirely wrong — no 'Gandelsman' among authors."
+
+  - id: "7.5.2"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Phan, H. et al."
+    actual_authors: "Shao-Hsiang Chien, Yang Sui, Hanjie Chen"
+    claimed_title: "MINT: Causally Tracing Information Fusion in Multimodal Large Language Models"
+    actual_title: "MINT: Causally Tracing Information Fusion in Multimodal Large Language Models"
+    claimed_venue: "2025, OpenReview"
+    actual_venue: "ICLR 2026 submission (Withdrawn)"
+    arxiv: null
+    notes: "Title matches exactly. Authors entirely wrong — no 'Phan' among authors. Venue is ICLR 2026 (withdrawn), not simply '2025'."
+
+  - id: "7.5.3"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Conmy, A. et al."
+    actual_authors: "Fred Zhang, Neel Nanda"
+    claimed_title: "Towards Best Practices of Activation Patching in Language Models"
+    actual_title: "Towards Best Practices of Activation Patching in Language Models: Metrics and Methods"
+    claimed_venue: "September 2023"
+    actual_venue: "Submitted 27 Sep 2023"
+    arxiv: "2309.16042"
+    notes: "arXiv ID correct, title matches (subtitle omitted). Authors entirely wrong — no 'Conmy' among authors. (Arthur Conmy is a real researcher but co-authored 7.5.4, not this paper.)"
+
+  - id: "7.5.4"
+    status: VERIFIED
+    claimed_authors: "Kharlapenko, D. et al."
+    actual_authors: "Dmitrii Kharlapenko, Stepan Shabalin, Arthur Conmy, Neel Nanda"
+    claimed_title: "Scaling Sparse Feature Circuits For Studying In-Context Learning"
+    actual_title: "Scaling Sparse Feature Circuits For Studying In-Context Learning"
+    claimed_venue: "ICML 2025, PMLR"
+    actual_venue: "ICML 2025, PMLR vol. 267, pp. 29819-29851"
+    arxiv: null
+    notes: "All details confirmed."
+
+
+section_7_6_concept_erasure_and_debiasing:
+
+  - id: "7.6.1"
+    status: VERIFIED
+    claimed_authors: "Ravfogel, S. et al."
+    actual_authors: "Shauli Ravfogel, Michael Twiton, Yoav Goldberg, Ryan D. Cotterell"
+    claimed_title: "Linear Adversarial Concept Erasure"
+    actual_title: "Linear Adversarial Concept Erasure"
+    claimed_venue: "ICML 2022"
+    actual_venue: "ICML 2022 (PMLR 162)"
+    arxiv: "2201.12091"
+    notes: "All details confirmed."
+
+  - id: "7.6.2"
+    status: PARTIALLY_VERIFIED
+    claimed_authors: "Zhan, H. et al."
+    actual_authors: "Floris Holstege, Shauli Ravfogel, Bram Wouters"
+    claimed_title: "SPLINCE: Simultaneous Projection for LINear Concept Removal and Covariance Preservation"
+    actual_title: "Preserving Task-Relevant Information Under Linear Concept Removal"
+    claimed_venue: "NeurIPS 2025"
+    actual_venue: "NeurIPS 2025 (confirmed)"
+    arxiv: "2506.10703"
+    notes: "arXiv ID and venue correct. SPLINCE is the method name but actual paper title differs. Authors entirely wrong — no 'Zhan' among authors."
+
+
+section_7_7_representation_similarity:
+
+  - id: "7.7.1"
+    status: VERIFIED
+    claimed_authors: "Kornblith, S. et al."
+    actual_authors: "Simon Kornblith, Mohammad Norouzi, Honglak Lee, Geoffrey Hinton"
+    claimed_title: "Similarity of Neural Network Representations Revisited"
+    actual_title: "Similarity of Neural Network Representations Revisited"
+    claimed_venue: "ICML 2019"
+    actual_venue: "ICML 2019 (PMLR 97, pp. 3519-3529)"
+    arxiv: "1905.00414"
+    notes: "All details confirmed."
+
+  - id: "7.7.2"
+    status: VERIFIED
+    claimed_authors: "Golub, G. H. & Van Loan, C. F."
+    actual_authors: "Gene H. Golub & Charles F. Van Loan"
+    claimed_title: "Matrix Computations, 4th ed."
+    actual_title: "Matrix Computations, 4th ed."
+    claimed_venue: "Johns Hopkins University Press, 2013"
+    actual_venue: "Johns Hopkins University Press, February 15, 2013"
+    arxiv: null
+    notes: "Canonical textbook in numerical linear algebra. All details confirmed."
+
+
+section_7_8_evaluation_metrics:
+
+  - id: "7.8.1"
+    status: VERIFIED
+    claimed_authors: "Zhang, T. et al."
+    actual_authors: "Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q. Weinberger, Yoav Artzi"
+    claimed_title: "BERTScore: Evaluating Text Generation with BERT"
+    actual_title: "BERTScore: Evaluating Text Generation with BERT"
+    claimed_venue: "ICLR 2020"
+    actual_venue: "ICLR 2020 (submitted Apr 2019, revised Feb 2020)"
+    arxiv: "1904.09675"
+    notes: "All details confirmed."
+
+  - id: "7.8.2"
+    status: VERIFIED
+    claimed_authors: "Panzeri, S. & Treves, A."
+    actual_authors: "Stefano Panzeri & Alessandro Treves"
+    claimed_title: "Analytical estimates of limited sampling biases in different information measures"
+    actual_title: "Analytical estimates of limited sampling biases in different information measures"
+    claimed_venue: "Network: Computation in Neural Systems, 7(1), 1996"
+    actual_venue: "Network: Computation in Neural Systems, vol. 7, pp. 87-107, 1996"
+    arxiv: null
+    notes: "All details confirmed."

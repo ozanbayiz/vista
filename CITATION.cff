@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "IDARVE: Investigating Demographic Attribute Representation in Vision Encoders"
+type: software
+authors:
+  - family-names: Bayiz
+    given-names: Ozan
+repository-code: "https://github.com/ozanbayiz/idarve"
+license: MIT
+keywords:
+  - sparse autoencoders
+  - vision encoders
+  - demographic attributes
+  - fairness
+  - interpretability

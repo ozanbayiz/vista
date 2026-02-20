@@ -1,0 +1,21 @@
+# ---------------------------------------------------------------------------
+# Evaluation config -- used by `python -m src.eval`
+# ---------------------------------------------------------------------------
+
+# Required (must be provided on command line or via experiment override):
+checkpoint: ???  # path to SAE Lightning checkpoint
+hdf5: ???        # path to HDF5 file with encoded latents and labels
+
+# Optional:
+output_dir: eval_output
+batch_size: 256
+mode: validation  # training or validation
+ablation_ks:
+  - 10
+  - 20
+  - 50
+  - 100
+
+hydra:
+  run:
+    dir: ${oc.env:SCRATCH,/scratch/current/ozanbayiz/outputs}/eval/${now:%Y-%m-%d}/${now:%H-%M-%S}

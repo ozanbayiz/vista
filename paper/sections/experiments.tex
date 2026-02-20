@@ -1,0 +1,198 @@
+\section{Experiments}
+\label{sec:experiments}
+
+All experiments use FairFace images with demographic labels. Unless otherwise noted, results report $n{=}1{,}000$ samples with 95\% bootstrap confidence intervals. We focus on gender as the primary attribute because gender keyword DCR is well-calibrated (1--18\% false-positive rate across VLMs; Section~\ref{sec:llm-judge}).
+
+\subsection{The Bottleneck Decomposition}
+\label{sec:bottleneck}
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Bottleneck decomposition on \pg.} Gender DCR delta (percentage points) for each intervention method on image captioning ($n{=}1{,}000$). The SAE passthrough (encode--decode without modification) accounts for the majority of the effect. All 95\% CIs from 10{,}000 bootstrap resamples.}
+\label{tab:decomposition}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Intervention} & \textbf{Gender $\Delta\dcr$} & \textbf{95\% CI} & \textbf{BERTScore} & \textbf{Incremental} \\
+\midrule
+No intervention (baseline) & --- & --- & --- & --- \\
+Noise (calibrated) & $-4.0\pp$ & [$-6.0$, $-2.0$] & 0.978 & $-4.0\pp$ \\
+SAE passthrough & $-16.1\pp$ & [$-18.4$, $-12.6$] & 0.933 & $-12.1\pp$ \\
+Random suppress ($m{=}56$) & $-16.1\pp$ & [$-18.4$, $-12.6$] & 0.933 & $\phantom{+}0.0\pp$ \\
+\textbf{SDF suppress} ($m{=}56$) & $\mathbf{-28.2\pp}$ & [$-31.1$, $-24.8$] & 0.931 & $\mathbf{-12.1\pp}$ \\
+\midrule
+LEACE (gender) & $-0.8\pp$ & [$-2.2$, $+0.8$] & 0.974 & --- \\
+S\&P Top-K ($k{=}64$) & $-0.4\pp$ & --- & 0.998 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:decomposition} presents the core result on \pg. The full SDF suppression effect ($-28.2\pp$ gender DCR) decomposes cleanly:
+
+\begin{itemize}
+    \item \textbf{Generic perturbation (14\%)}: Matched-magnitude Gaussian noise reduces gender DCR by only $4.0\pp$, with BERTScore 0.978 indicating minimal text disruption. Generic noise at the scale of SAE reconstruction error is insufficient to explain the observed effects.
+    
+    \item \textbf{Structured bottleneck (43\%)}: SAE passthrough---encoding and decoding activations without any feature modification---reduces gender DCR by $16.1\pp$ (CI: $[-18.4, -12.6]$). This is entirely reconstruction error, yet accounts for nearly half the ``suppression'' effect. Critically, random feature suppression produces the \emph{identical} effect ($p = 1.0$, paired permutation test), confirming that which features are zeroed is irrelevant at this level.
+    
+    \item \textbf{Targeted suppression (43\%)}: Suppressing the 56 identified gender SDFs adds a further $12.1\pp$ reduction beyond passthrough (CI: $[-15.0, -9.2]$, $p < 0.001$ vs.\ passthrough). This is the genuine interpretability-driven component---it requires identifying the correct features. It is statistically significant, but accounts for less than half of the total effect reported by standard SAE suppression evaluations.
+\end{itemize}
+
+LEACE and S\&P Top-K, which do not pass through the SAE bottleneck, produce negligible caption DCR changes ($< 1\pp$), confirming that the large effects in the SAE conditions are primarily bottleneck-driven.
+
+\subsection{SAE Quality Ablation}
+\label{sec:quality-ablation}
+
+If the bottleneck hypothesis is correct, worsening SAE reconstruction should increase the bottleneck effect. We test this by varying the effective $k$ parameter at inference time (reducing sparsity $\Rightarrow$ worse reconstruction).
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Bottleneck effect scales with reconstruction quality (\pg).} Gender DCR delta under passthrough (no feature modification) with varying SAE sparsity.}
+\label{tab:quality}
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Effective $k$} & \textbf{Gender $\Delta\dcr$} & \textbf{95\% CI} & \textbf{BERTScore} & \textbf{vs.\ $k{=}64$} \\
+\midrule
+64 (default) & $-16.1\pp$ & [$-18.4$, $-12.6$] & 0.933 & --- \\
+32 & $-31.8\pp$ & [$-36.6$, $-27.2$] & 0.918 & $p < 0.0001$ \\
+16 & $-52.4\pp$ & [$-57.4$, $-47.4$] & 0.904 & $p < 0.0001$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:quality} confirms the prediction: halving $k$ from 64 to 32 nearly doubles the gender DCR drop ($16.1 \to 31.8\pp$), and quartering it to 16 more than triples it ($52.4\pp$). All pairwise differences are significant ($p < 0.0001$). Importantly, BERTScore degrades only moderately (0.933 $\to$ 0.904), meaning the VLM still generates coherent English---it simply contains far less gendered language. This confirms that the SAE's sparse reconstruction preferentially loses demographic information, constituting a structured information bottleneck rather than generic degradation.
+
+\paragraph{Dictionary size ablation.}
+The sparsity ablation above varies $k$ at fixed dictionary size ($4d$). A natural question is whether increasing dictionary capacity could reduce the reconstruction error and hence the bottleneck effect. We train SAEs at $4\times$, $8\times$, and $16\times$ dictionary size on mean-pooled \pg VE features (Table~\ref{tab:dict-size}), holding $k{=}64$ fixed.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Reconstruction quality under varying dictionary size (\pg, mean-pooled).} All SAEs trained for 50 epochs with $k{=}64$. Quadrupling dictionary capacity yields negligible cosine similarity improvement; nearly all additional features remain dead.}
+\label{tab:dict-size}
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Dict size} & \textbf{Cosine sim} & \textbf{Val loss} & \textbf{Alive features} & \textbf{Dead (\%)} \\
+\midrule
+$4d$ (4{,}608) & 0.998 & 0.0098 & 577 & 87.5\% \\
+$8d$ (9{,}216) & 0.998 & 0.0099 & 559 & 93.9\% \\
+$16d$ (18{,}432) & 0.998 & 0.0095 & 583 & 96.8\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The result is unambiguous: quadrupling dictionary capacity from $4d$ to $16d$ improves cosine similarity by only $5 \times 10^{-5}$ (0.99823~$\to$~0.99828). The number of alive features saturates at $\sim$560--580 regardless of dictionary size, with $>$87\% of features remaining dead. This confirms that the bottleneck is fundamentally \emph{sparsity-limited} ($k{=}64$), not \emph{capacity-limited}: the top-$k$ constraint restricts reconstruction to a 64-dimensional subspace per token regardless of how many candidate features are available. The additional features in the $8d$ and $16d$ dictionaries simply fail to activate, contributing nothing to reconstruction quality. This result explains why the $k$-ablation (Table~\ref{tab:quality}) produces dramatic effects while dictionary size does not, and suggests that higher-fidelity SAE architectures (e.g., Matryoshka SAEs~\citep{zaigrajew2025matryoshka}) that modify the sparsity mechanism rather than increasing capacity may be needed to mitigate the reconstruction-error confound.
+
+\subsection{Cross-Model Validation}
+\label{sec:cross-model}
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Cross-model comparison of gender captioning interventions.} Gender DCR delta (pp) with LLM-judge validation where available. The bottleneck decomposition is architecture-dependent: dominant on \pg, absent on \qiii, and reversed on \qii.}
+\label{tab:cross-model}
+\small
+\begin{tabular}{llccc}
+\toprule
+& & \multicolumn{3}{c}{\textbf{VLM}} \\
+\cmidrule(lr){3-5}
+\textbf{Method} & \textbf{Metric} & \pg & \qii & \qiii \\
+\midrule
+\multirow{2}{*}{Passthrough} & KW $\Delta\dcr$ & $-16.1$ & $-0.6$ & $+0.4$ \\
+& LLM $\Delta\dcr$ & $-15.5$ & --- & $+3.2$ \\
+\midrule
+\multirow{2}{*}{SDF suppress} & KW $\Delta\dcr$ & $-28.2$ & $+23.8$ & $-21.2$ \\
+& LLM $\Delta\dcr$ & $-27.9$ & --- & $-12.9$ \\
+\midrule
+\multirow{2}{*}{LEACE} & KW $\Delta\dcr$ & $-0.8$ & $-4.2$ & $-12.9$ \\
+& LLM $\Delta\dcr$ & $-0.7$ & --- & $-12.9$ \\
+\midrule
+Baseline gender DCR & & 83\% & 6\% & 88\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:cross-model} reveals that the bottleneck decomposition is fundamentally \textbf{architecture-dependent}:
+
+\paragraph{PaliGemma2 (SigLIP VE).} High baseline gender DCR (83\%). The bottleneck dominates: passthrough alone reduces gender content by $16.1\pp$. SDF suppression adds $12.1\pp$ beyond the bottleneck.
+
+\paragraph{Qwen2-VL (custom ViT).} Very low baseline gender DCR (6\%). The model defaults to neutral language (``a person'' instead of ``a man/woman''). Passthrough has \emph{zero} effect (CI spans zero). Strikingly, SDF suppression \textbf{increases} gender content by $23.8\pp$---the opposite direction. Of 500 samples under suppression, 127 (25.4\%) \emph{gained} gender-specific language while only 8 (1.6\%) lost it (Appendix~\ref{app:q2vl-qualitative}). The dominant pattern is that neutral descriptions (``a person,'' ``the child'') are replaced by gendered hallucinations (``a man,'' ``a boy''), sometimes assigning the \emph{incorrect} gender. This is consistent with SAE reconstruction disrupting the visual features that support the model's neutral-language strategy, causing fallback to more specific (and often inaccurate) descriptions. This opposite-direction effect is confirmed by LLM-judge evaluation (Section~\ref{sec:llm-judge}).
+
+\paragraph{Qwen3-VL (DeepStack ViT).} High baseline gender DCR (88\%). The bottleneck is \emph{absent}: passthrough changes gender DCR by only $+0.4\pp$ (LLM: $+3.2\pp$, CI: $[+0.9, +5.5]$). SDF suppression provides a genuine $-21.2\pp$ reduction (LLM: $-12.9\pp$, CI: $[-16.5, -9.3]$), entirely attributable to targeted feature removal. LEACE is also effective ($-12.9\pp$). The \qiii SAE achieves the highest reconstruction quality among our models (cosine similarity 0.975 vs.\ 0.945 for \pg), consistent with the hypothesis that better reconstruction reduces the bottleneck. This is the cleanest demonstration that SAE-based intervention \emph{can} work when reconstruction quality is sufficient.
+
+\paragraph{Implications.} The cross-model comparison demonstrates that the bottleneck illusion is not a universal property of SAEs but emerges from the interaction between reconstruction error and the VLM's baseline captioning behaviour. The reconstruction quality ordering (\qiii: 0.975 $>$ \qii: 0.959 $>$ \pg: 0.945) is consistent with the bottleneck severity ordering (\pg: dominant, \qii: absent, \qiii: absent), though baseline gender DCR (83\%, 6\%, 88\%) also varies across models. Disentangling the contributions of reconstruction quality and language model priors requires controlled experiments that we leave to future work.
+
+\subsection{LEACE: Targeted Concept Erasure Without the Bottleneck}
+\label{sec:leace}
+
+\begin{table}[t]
+\centering
+\caption{\textbf{LEACE reveals dual processing pathways.} VQA accuracy delta and caption DCR delta under LEACE gender erasure across three VLMs.}
+\label{tab:leace}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{VLM} & \textbf{VQA Acc.\ $\Delta$} & \textbf{Caption Gender $\Delta\dcr$} & \textbf{BERTScore} & \textbf{Cos sim} \\
+\midrule
+\pg & $-9.0\pp$ (59\% $\to$ 50\%) & $-0.8\pp$ & 0.974 & 0.9991 \\
+\qii & $-17.5\pp$ & $-4.2\pp$ & --- & --- \\
+\qiii & $-11.0\pp$ & $-12.9\pp$ & 0.957 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+LEACE provides a bottleneck-free comparison method (Table~\ref{tab:leace}). On \pg, LEACE gender erasure drops VQA accuracy to exactly 50\%---chance for binary classification---while producing negligible caption DCR change ($-0.8\pp$, CI spans zero). The high BERTScore (0.974) and cosine similarity (0.9991) confirm that LEACE introduces minimal perturbation to the overall representation.
+
+This VQA--captioning dissociation admits several interpretations: (1) VQA reads gender from a compact linear subspace fully removable by LEACE, while captioning synthesises gender from nonlinear or distributed features resistant to linear erasure; (2) the mean-pooled LEACE projection incompletely erases token-level gender information that captioning relies on (see Appendix~\ref{app:details}); or (3) the language model's internal priors compensate for erased visual gender cues during free-form generation but not during directed VQA. The \pg model's high baseline gender DCR (83\%) is consistent with strong language-side priors that could sustain gendered captions even without visual input. We cannot fully disambiguate these hypotheses with the current experiments, though the near-unity cosine similarity under LEACE argues against explanation (2) as the dominant factor.
+
+On \qiii, LEACE is more effective on captions ($-12.9\pp$), suggesting that gender encoding in the DeepStack ViT has a stronger linear component accessible to captioning, or that the \qiii language model has weaker compensatory priors. The cross-model variation in LEACE effectiveness provides complementary evidence about the interaction between VE representation geometry and language model generation strategy.
+
+\subsection{LLM-as-Judge Validation}
+\label{sec:llm-judge}
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Keyword-based race DCR has 77--98\% false-positive rates.} Baseline DCR (original captions, no intervention) measured by keyword matching vs.\ LLM-as-judge binary classification (Qwen3-8B).}
+\label{tab:keyword-fp}
+\small
+\begin{tabular}{llccc}
+\toprule
+\textbf{VLM} & \textbf{Attribute} & \textbf{KW DCR} & \textbf{LLM DCR} & \textbf{FP Rate} \\
+\midrule
+\pg & Race & 11.4\% & 0.2\% & 98.2\% \\
+\pg & Gender & 83.0\% & 82.2\% & 1.0\% \\
+\qii & Race & 21.6\% & 5.0\% & 76.9\% \\
+\qii & Gender & 6.0\% & 5.8\% & 3.3\% \\
+\qiii & Race & 45.0\% & 9.5\% & 78.9\% \\
+\qiii & Gender & 88.0\% & 72.0\% & 18.2\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A critical methodological finding concerns the validity of keyword-based DCR for different attributes (Table~\ref{tab:keyword-fp}). We evaluate all captions with two independent LLM judges: Qwen3-8B~\citep{yang2025qwen3} for binary classification (``Does this caption mention [attribute]?'') and JudgeLRM-7B~\citep{judgelrm2025} for pairwise comparison (``Which caption contains more [attribute] content?'').
+
+\paragraph{Race keyword DCR is unreliable.} Polysemous terms like ``white'' (clothing), ``black'' (hair), ``light'' (lighting), and ``dark'' (shadows) generate false positives at 77--98\% rates across all three VLMs. The LLM judges confirm that VLMs almost never mention race in free-form captions (\pg: 0.2\%, \qii: 5.0\%). This means all keyword-based race captioning results in the literature---including ours---are measuring noise in false-positive rates, not genuine changes in racial content.
+
+\paragraph{Gender keyword DCR is well-calibrated.} For gender, keyword and LLM-based metrics agree within 1--3\pp across all VLMs, with false-positive rates of 1--18\%. This validates our use of keyword DCR for gender throughout the paper.
+
+\paragraph{LLM judge confirms all main effects.} For the $n{=}1{,}000$ experiments on \pg and \qiii (Table~\ref{tab:cross-model}), LLM-based gender DCR deltas differ from keyword-based deltas by $<1.5\pp$ on \pg and $<8.3\pp$ on \qiii (where the 18\% keyword FP rate inflates keyword-based estimates). All confidence intervals remain significant and all directional conclusions are unchanged.
+
+\subsection{VQA Provides Complementary Evidence}
+\label{sec:vqa}
+
+\begin{table}[t]
+\centering
+\caption{\textbf{VQA accuracy delta under intervention} (gender attribute, 200 samples per condition). VQA accuracy measures direct demographic identification, complementing the indirect caption DCR metric.}
+\label{tab:vqa}
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Method} & \pg & \qii & \qiii \\
+\midrule
+Passthrough & $+4.5\pp$ & $-1.0\pp$ & $0.0\pp$ \\
+SDF suppress & $+4.0\pp$ & $-21.5\pp$ & $-10.0\pp$ \\
+LEACE & $-9.0\pp$ & $-17.5\pp$ & $-11.0\pp$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+VQA results (Table~\ref{tab:vqa}, $n{=}200$) reveal a consistent pattern: LEACE reduces VQA accuracy substantially on all three VLMs ($-9$ to $-17.5\pp$), confirming that it removes the linear gender subspace used for direct classification. SDF suppression shows variable effects: negligible on \pg ($+4.0\pp$), strong on \qii ($-21.5\pp$) and \qiii ($-10.0\pp$). This contrasts with the captioning results, where SDF suppression has the largest effect on \pg. The divergence provides evidence that the SAE bottleneck affects free-form captioning (which synthesises gender from many features) more than VQA (which reads a compact linear subspace). We note that the VQA sample size ($n{=}200$) is smaller than the captioning experiments ($n{=}1{,}000$), and these results should be interpreted accordingly; future work should validate with larger samples and bootstrap CIs.

@@ -1,0 +1,17 @@
+# @package _global_
+
+# Experiment: Train linear probes on PaliGemma2 FairFace latents
+# Usage: python -m src.main +experiment=probe_paligemma2_fairface
+
+defaults:
+  - override /model: probe_paligemma2
+  - override /data: fairface_paligemma2_labels
+  - override /module: probe
+
+trainer:
+  max_epochs: 50
+  precision: 16-mixed
+
+wandb:
+  project: idarve
+  enabled: true

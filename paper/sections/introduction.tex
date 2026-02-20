@@ -1,0 +1,27 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Sparse autoencoders (SAEs) have emerged as a promising tool for mechanistic interpretability of neural networks~\citep{cunningham2023sparse, bricken2023monosemanticity}, offering a way to decompose dense, polysemantic representations into sparse, human-interpretable features. A growing body of work applies SAEs to vision encoders in vision-language models (VLMs), identifying features that encode demographic attributes---such as gender, race, and age---and suppressing them to reduce biased outputs~\citep{sasse2024debias, pach2025saes, joseph2025steering}. These approaches report substantial fairness improvements on classification and retrieval benchmarks, suggesting that SAE-based feature suppression is an effective debiasing tool.
+
+We show that this conclusion requires substantial qualification. A dominant mechanism behind reported debiasing effects is not targeted feature suppression, but the \emph{reconstruction error} imposed by the SAE's encode-decode process itself. Passing vision encoder activations through an SAE---\emph{without modifying any features}---accounts for a large, architecture-dependent portion of demographic content reduction in generated text. This ``passthrough'' effect, which we term the \textbf{reconstruction-error confound}, arises because SAEs with finite dictionary size and top-$k$ sparsity constraints preferentially lose demographic nuance during reconstruction, as these attributes occupy a small, linearly-structured subspace that is poorly preserved by sparse coding. The SAE acts as an unintentional demographic filter, systematically discarding fine-grained attribute information while preserving coarse semantic content.
+
+Through a systematic series of experiments across three VLMs with distinct vision encoder architectures---\pg (SigLIP)~\citep{beyer2024paligemma}, \qii (custom ViT)~\citep{wang2024qwen2vl}, and \qiii (DeepStack ViT)~\citep{bai2025qwen3vl}---we quantitatively decompose the full SAE intervention effect into three components:
+\begin{enumerate}
+    \item \textbf{Generic perturbation} ($\sim$4\pp): The effect of matched-magnitude Gaussian noise, which barely affects demographic content.
+    \item \textbf{Structured reconstruction error} ($\sim$17\pp on \pg, $\sim$0\pp on \qiii): The additional effect of the SAE encode--decode pipeline beyond generic noise, which varies dramatically across architectures.
+    \item \textbf{Targeted feature suppression} ($\sim$12\pp): The genuine incremental effect of zeroing demographic-aligned sparse dictionary features (SDFs), attributable to feature identification.
+\end{enumerate}
+
+This decomposition reveals that prior work conflates components (2) and (3), inflating claims about the efficacy of targeted feature identification. The bottleneck component is not a property of the SAE alone, but depends critically on the interaction between the VLM's language model and the vision encoder: models that generate highly gendered language (like \pg, with 83\% baseline gender mention rate) are far more susceptible to the bottleneck than models that default to neutral language (like \qii, with 6\% baseline). We further show that:
+
+\begin{itemize}
+    \item The bottleneck effect \textbf{scales monotonically} with SAE reconstruction quality: reducing the top-$k$ sparsity parameter from 64 to 16 increases gender content reduction from 21\pp to 52\pp, with no change to the features suppressed (Section~\ref{sec:quality-ablation}).
+    
+    \item \textbf{LEACE}~\citep{belrose2023leace}, a linear concept erasure method that bypasses the SAE entirely, reveals a \textbf{VQA--captioning dissociation}: it reduces VQA gender accuracy to chance (50\%) while leaving caption content nearly unchanged, indicating that these tasks access demographic information through different mechanisms (Section~\ref{sec:leace}).
+    
+    \item The same SAE-based intervention can have \textbf{qualitatively opposite effects} across VLMs: suppressing gender-aligned features reduces gender content by 25\pp on \qiii but \emph{increases} it by 24\pp on \qii, because \qii's neutral language generation is disrupted by SAE reconstruction (Section~\ref{sec:cross-model}).
+    
+    \item We validate all results with an independent \textbf{LLM-as-judge} evaluation, finding that keyword-based demographic content metrics have 77--98\% false-positive rates for race (due to polysemous colour terms) while achieving $<$3\% error for gender (Section~\ref{sec:llm-judge}).
+\end{itemize}
+
+Our results have immediate implications for the SAE-for-debiasing research programme: reported improvements must be decomposed against passthrough and noise baselines before attributing them to feature-level interpretability. We release code and all experimental artefacts to enable this decomposition on future work.

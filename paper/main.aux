@@ -1,0 +1,166 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{cunningham2023sparse,bricken2023monosemanticity}
+\citation{sasse2024debias,pach2025saes,joseph2025steering}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:introduction}{{1}{1}{Introduction}{section.1}{}}
+\citation{beyer2024paligemma}
+\citation{wang2024qwen2vl}
+\citation{bai2025qwen3vl}
+\citation{belrose2023leace}
+\citation{cunningham2023sparse,bricken2023monosemanticity}
+\citation{bussmann2024batchtopk}
+\citation{stevens2025interpretable}
+\citation{joseph2025steering}
+\citation{pach2025saes}
+\citation{zaigrajew2025matryoshka}
+\citation{karvonen2025saebench}
+\citation{sasse2024debias}
+\citation{barbalau2025select}
+\citation{belrose2023leace}
+\citation{holstege2025splince}
+\citation{zhang2025joint}
+\citation{bendvlm2024}
+\citation{sfid2024}
+\citation{prism2025}
+\citation{zhao2017men}
+\citation{yang2025qwen3}
+\citation{judgelrm2025}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{3}{section.2}\protected@file@percent }
+\newlabel{sec:related}{{2}{3}{Related Work}{section.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Sparse autoencoders for interpretability.}{3}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{SAE-based VLM debiasing.}{3}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Linear concept erasure.}{3}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{VLM fairness and debiasing.}{3}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Evaluation of demographic content.}{3}{section*.5}\protected@file@percent }
+\citation{karkkainen2021fairface}
+\citation{bussmann2024batchtopk}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Vision-language models used in experiments.}}{4}{table.caption.6}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{tab:models}{{1}{4}{Vision-language models used in experiments}{table.caption.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Method}{4}{section.3}\protected@file@percent }
+\newlabel{sec:method}{{3}{4}{Method}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Vision Encoder Latent Extraction}{4}{subsection.3.1}\protected@file@percent }
+\newlabel{sec:ve-extraction}{{3.1}{4}{Vision Encoder Latent Extraction}{subsection.3.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}SAE Training and Demographic Feature Discovery}{4}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:sae-sdf}{{3.2}{4}{SAE Training and Demographic Feature Discovery}{subsection.3.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Intervention Methods}{4}{subsection.3.3}\protected@file@percent }
+\newlabel{sec:interventions}{{3.3}{4}{Intervention Methods}{subsection.3.3}{}}
+\citation{sasse2024debias}
+\citation{belrose2023leace}
+\citation{barbalau2025select}
+\citation{zhang2020bertscore}
+\@writefile{toc}{\contentsline {paragraph}{1. Noise perturbation.}{5}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{2. SAE passthrough.}{5}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{3. Random feature suppression.}{5}{section*.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{4. Targeted SDF suppression.}{5}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{5. LEACE erasure.}{5}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{6. S\&P Top-K projection.}{5}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Evaluation}{5}{subsection.3.4}\protected@file@percent }
+\newlabel{sec:evaluation}{{3.4}{5}{Evaluation}{subsection.3.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{Image captioning.}{5}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Visual question answering (VQA).}{5}{section*.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experiments}{5}{section.4}\protected@file@percent }
+\newlabel{sec:experiments}{{4}{5}{Experiments}{section.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces \textbf  {Bottleneck decomposition on PaliGemma2\xspace  .} Gender DCR delta (percentage points) for each intervention method on image captioning ($n{=}1{,}000$). The SAE passthrough (encode--decode without modification) accounts for the majority of the effect. All 95\% CIs from 10{,}000 bootstrap resamples.}}{6}{table.caption.15}\protected@file@percent }
+\newlabel{tab:decomposition}{{2}{6}{\textbf {Bottleneck decomposition on \pg .} Gender DCR delta (percentage points) for each intervention method on image captioning ($n{=}1{,}000$). The SAE passthrough (encode--decode without modification) accounts for the majority of the effect. All 95\% CIs from 10{,}000 bootstrap resamples}{table.caption.15}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}The Bottleneck Decomposition}{6}{subsection.4.1}\protected@file@percent }
+\newlabel{sec:bottleneck}{{4.1}{6}{The Bottleneck Decomposition}{subsection.4.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}SAE Quality Ablation}{6}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:quality-ablation}{{4.2}{6}{SAE Quality Ablation}{subsection.4.2}{}}
+\citation{zaigrajew2025matryoshka}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces \textbf  {Bottleneck effect scales with reconstruction quality (PaliGemma2\xspace  ).} Gender DCR delta under passthrough (no feature modification) with varying SAE sparsity.}}{7}{table.caption.16}\protected@file@percent }
+\newlabel{tab:quality}{{3}{7}{\textbf {Bottleneck effect scales with reconstruction quality (\pg ).} Gender DCR delta under passthrough (no feature modification) with varying SAE sparsity}{table.caption.16}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces \textbf  {Reconstruction quality under varying dictionary size (PaliGemma2\xspace  , mean-pooled).} All SAEs trained for 50 epochs with $k{=}64$. Quadrupling dictionary capacity yields negligible cosine similarity improvement; nearly all additional features remain dead.}}{7}{table.caption.18}\protected@file@percent }
+\newlabel{tab:dict-size}{{4}{7}{\textbf {Reconstruction quality under varying dictionary size (\pg , mean-pooled).} All SAEs trained for 50 epochs with $k{=}64$. Quadrupling dictionary capacity yields negligible cosine similarity improvement; nearly all additional features remain dead}{table.caption.18}{}}
+\@writefile{toc}{\contentsline {paragraph}{Dictionary size ablation.}{7}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Cross-Model Validation}{7}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:cross-model}{{4.3}{7}{Cross-Model Validation}{subsection.4.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{PaliGemma2 (SigLIP VE).}{7}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Qwen2-VL (custom ViT).}{7}{section*.21}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces \textbf  {Cross-model comparison of gender captioning interventions.} Gender DCR delta (pp) with LLM-judge validation where available. The bottleneck decomposition is architecture-dependent: dominant on PaliGemma2\xspace  , absent on Qwen3-VL\xspace  , and reversed on Qwen2-VL\xspace  .}}{8}{table.caption.19}\protected@file@percent }
+\newlabel{tab:cross-model}{{5}{8}{\textbf {Cross-model comparison of gender captioning interventions.} Gender DCR delta (pp) with LLM-judge validation where available. The bottleneck decomposition is architecture-dependent: dominant on \pg , absent on \qiii , and reversed on \qii }{table.caption.19}{}}
+\@writefile{toc}{\contentsline {paragraph}{Qwen3-VL (DeepStack ViT).}{8}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Implications.}{8}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}LEACE: Targeted Concept Erasure Without the Bottleneck}{8}{subsection.4.4}\protected@file@percent }
+\newlabel{sec:leace}{{4.4}{8}{LEACE: Targeted Concept Erasure Without the Bottleneck}{subsection.4.4}{}}
+\citation{yang2025qwen3}
+\citation{judgelrm2025}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces \textbf  {LEACE reveals dual processing pathways.} VQA accuracy delta and caption DCR delta under LEACE gender erasure across three VLMs.}}{9}{table.caption.24}\protected@file@percent }
+\newlabel{tab:leace}{{6}{9}{\textbf {LEACE reveals dual processing pathways.} VQA accuracy delta and caption DCR delta under LEACE gender erasure across three VLMs}{table.caption.24}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces \textbf  {Keyword-based race DCR has 77--98\% false-positive rates.} Baseline DCR (original captions, no intervention) measured by keyword matching vs.\ LLM-as-judge binary classification (Qwen3-8B).}}{9}{table.caption.25}\protected@file@percent }
+\newlabel{tab:keyword-fp}{{7}{9}{\textbf {Keyword-based race DCR has 77--98\% false-positive rates.} Baseline DCR (original captions, no intervention) measured by keyword matching vs.\ LLM-as-judge binary classification (Qwen3-8B)}{table.caption.25}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}LLM-as-Judge Validation}{9}{subsection.4.5}\protected@file@percent }
+\newlabel{sec:llm-judge}{{4.5}{9}{LLM-as-Judge Validation}{subsection.4.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Race keyword DCR is unreliable.}{9}{section*.26}\protected@file@percent }
+\citation{sasse2024debias,pach2025saes}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces \textbf  {VQA accuracy delta under intervention} (gender attribute, 200 samples per condition). VQA accuracy measures direct demographic identification, complementing the indirect caption DCR metric.}}{10}{table.caption.29}\protected@file@percent }
+\newlabel{tab:vqa}{{8}{10}{\textbf {VQA accuracy delta under intervention} (gender attribute, 200 samples per condition). VQA accuracy measures direct demographic identification, complementing the indirect caption DCR metric}{table.caption.29}{}}
+\@writefile{toc}{\contentsline {paragraph}{Gender keyword DCR is well-calibrated.}{10}{section*.27}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{LLM judge confirms all main effects.}{10}{section*.28}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6}VQA Provides Complementary Evidence}{10}{subsection.4.6}\protected@file@percent }
+\newlabel{sec:vqa}{{4.6}{10}{VQA Provides Complementary Evidence}{subsection.4.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{10}{section.5}\protected@file@percent }
+\newlabel{sec:discussion}{{5}{10}{Discussion}{section.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Implications for SAE-based debiasing.}{10}{section*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{The structured bottleneck is not generic noise.}{10}{section*.31}\protected@file@percent }
+\citation{zaigrajew2025matryoshka}
+\@writefile{toc}{\contentsline {paragraph}{Scope: output-layer vs.\ internal SAEs.}{11}{section*.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Architecture-dependent bottleneck: a feature, not a bug?}{11}{section*.33}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{LEACE as a diagnostic tool.}{11}{section*.34}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Limitations.}{11}{section*.35}\protected@file@percent }
+\bibstyle{plainnat}
+\bibdata{references}
+\bibcite{bai2025qwen3vl}{{1}{2025}{{Bai et~al.}}{{}}}
+\bibcite{barbalau2025select}{{2}{2025}{{B{\u {a}}rb{\u {a}}lau et~al.}}{{B{\u {a}}rb{\u {a}}lau, P{\u {a}}duraru, Poncu, Tifrea, and Burceanu}}}
+\bibcite{belrose2023leace}{{3}{2023}{{Belrose et~al.}}{{Belrose, Schneider-Joseph, Ravfogel, Cotterell, Rabin, and Biderman}}}
+\bibcite{beyer2024paligemma}{{4}{2024}{{Beyer et~al.}}{{Beyer, Steiner, Pinto, Kolesnikov, Romero, Zhai, and Houlsby}}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{12}{section.6}\protected@file@percent }
+\newlabel{sec:conclusion}{{6}{12}{Conclusion}{section.6}{}}
+\bibcite{bricken2023monosemanticity}{{5}{2023}{{Bricken et~al.}}{{Bricken, Templeton, Batson, Chen, Jermyn, Conerly, Turner, Anil, Denison, Askell, et~al.}}}
+\bibcite{bussmann2024batchtopk}{{6}{2024}{{Bussmann et~al.}}{{Bussmann, Leask, and Nanda}}}
+\bibcite{judgelrm2025}{{7}{2025}{{Chen et~al.}}{{}}}
+\bibcite{cunningham2023sparse}{{8}{2024}{{Cunningham et~al.}}{{Cunningham, Ewart, Riggs, Huben, and Sharkey}}}
+\bibcite{bendvlm2024}{{9}{2024}{{Gerych et~al.}}{{}}}
+\bibcite{holstege2025splince}{{10}{2025}{{Holstege et~al.}}{{Holstege, Ravfogel, and Wouters}}}
+\bibcite{joseph2025steering}{{11}{2025}{{Joseph et~al.}}{{}}}
+\bibcite{sfid2024}{{12}{2024}{{Jung et~al.}}{{Jung, Jang, and Wang}}}
+\bibcite{karkkainen2021fairface}{{13}{2021}{{K{\"a}rkk{\"a}inen and Joo}}{{}}}
+\bibcite{karvonen2025saebench}{{14}{2025}{{Karvonen et~al.}}{{}}}
+\bibcite{prism2025}{{15}{2025}{{Molahasani et~al.}}{{}}}
+\bibcite{pach2025saes}{{16}{2025}{{Pach et~al.}}{{}}}
+\bibcite{sasse2024debias}{{17}{2024}{{Sasse et~al.}}{{Sasse, Chen, Pond, Bitterman, and Osborne}}}
+\bibcite{stevens2025interpretable}{{18}{2025}{{Stevens et~al.}}{{}}}
+\bibcite{wang2024qwen2vl}{{19}{2024}{{Wang et~al.}}{{Wang, Bai, Tan, Wang, Fan, Bai, Chen, et~al.}}}
+\bibcite{yang2025qwen3}{{20}{2025}{{Yang et~al.}}{{}}}
+\bibcite{zaigrajew2025matryoshka}{{21}{2025}{{Zaigrajew et~al.}}{{}}}
+\bibcite{zhang2025joint}{{22}{2025}{{Zhang et~al.}}{{Zhang, Guo, and Kankanhalli}}}
+\bibcite{zhang2020bertscore}{{23}{2020}{{Zhang et~al.}}{{Zhang, Kishore, Wu, Weinberger, and Artzi}}}
+\bibcite{zhao2017men}{{24}{2017}{{Zhao et~al.}}{{Zhao, Wang, Yatskar, Ordonez, and Chang}}}
+\citation{bussmann2024batchtopk}
+\citation{belrose2023leace}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Experimental Details}{15}{appendix.A}\protected@file@percent }
+\newlabel{app:details}{{A}{15}{Experimental Details}{appendix.A}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}SAE Training Hyperparameters}{15}{subsection.A.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces SAE reconstruction quality by model.}}{15}{table.caption.37}\protected@file@percent }
+\newlabel{tab:sae-details}{{9}{15}{SAE reconstruction quality by model}{table.caption.37}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}SDF Discovery Pipeline Details}{15}{subsection.A.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}LEACE Implementation}{15}{subsection.A.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Mean-pooled fitting, per-token application.}{15}{section*.38}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.4}LLM Judge Implementation}{16}{subsection.A.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Binary classification (Qwen3-8B).}{16}{section*.39}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Pairwise comparison (JudgeLRM-7B).}{16}{section*.40}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {B}Additional Results}{16}{appendix.B}\protected@file@percent }
+\newlabel{app:additional}{{B}{16}{Additional Results}{appendix.B}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.1}Dose-Response Under Feature Amplification}{16}{subsection.B.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Gender DCR delta under feature amplification (PaliGemma2\xspace  , $n{=}500$).}}{16}{table.caption.41}\protected@file@percent }
+\newlabel{tab:amplification}{{10}{16}{Gender DCR delta under feature amplification (\pg , $n{=}500$)}{table.caption.41}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.2}Intersectional Analysis}{16}{subsection.B.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.3}Race-Gender Feature Entanglement}{17}{subsection.B.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.4}Qualitative Analysis of the Qwen2-VL\xspace  Reverse Effect}{17}{subsection.B.4}\protected@file@percent }
+\newlabel{app:q2vl-qualitative}{{B.4}{17}{Qualitative Analysis of the \qii Reverse Effect}{subsection.B.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces \textbf  {Qualitative examples of the Qwen2-VL\xspace  reverse effect.} Gender SDF suppression converts neutral captions into gendered ones. Ground-truth gender labels shown for reference; suppressed captions sometimes assign the wrong gender.}}{17}{table.caption.42}\protected@file@percent }
+\newlabel{tab:q2vl-examples}{{11}{17}{\textbf {Qualitative examples of the \qii reverse effect.} Gender SDF suppression converts neutral captions into gendered ones. Ground-truth gender labels shown for reference; suppressed captions sometimes assign the wrong gender}{table.caption.42}{}}
+\gdef \@abspage@last{17}

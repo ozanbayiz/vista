@@ -1,0 +1,7 @@
+_target_: src.modules.probe.ProbeModule
+
+input_dim: ${model.input_size}
+age_classes: ${model.age_classes}
+gender_classes: ${model.gender_classes}
+race_classes: ${model.race_classes}
+learning_rate: 1e-3

@@ -1,0 +1,153 @@
+\begin{thebibliography}{24}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bai et~al.(2025)]{bai2025qwen3vl}
+Shuai Bai et~al.
+\newblock Qwen3-vl technical report.
+\newblock \emph{arXiv preprint arXiv:2511.21631}, 2025.
+
+\bibitem[B{\u{a}}rb{\u{a}}lau et~al.(2025)B{\u{a}}rb{\u{a}}lau, P{\u{a}}duraru,
+  Poncu, Tifrea, and Burceanu]{barbalau2025select}
+Antonio B{\u{a}}rb{\u{a}}lau, Cristian~Daniel P{\u{a}}duraru, Teodor Poncu,
+  Alexandru Tifrea, and Elena Burceanu.
+\newblock Rethinking sparse autoencoders: {Select-and-Project} for fairness and
+  control from encoder features alone.
+\newblock \emph{arXiv preprint arXiv:2509.10809}, 2025.
+
+\bibitem[Belrose et~al.(2023)Belrose, Schneider-Joseph, Ravfogel, Cotterell,
+  Rabin, and Biderman]{belrose2023leace}
+Nora Belrose, David Schneider-Joseph, Shauli Ravfogel, Ryan Cotterell, Edward
+  Rabin, and Stella Biderman.
+\newblock {LEACE}: Perfect linear concept erasure in closed form.
+\newblock In \emph{NeurIPS}, 2023.
+
+\bibitem[Beyer et~al.(2024)Beyer, Steiner, Pinto, Kolesnikov, Romero, Zhai, and
+  Houlsby]{beyer2024paligemma}
+Lucas Beyer, Andreas Steiner, Andr{\'e}~Susano Pinto, Alexander Kolesnikov,
+  Adriana Romero, Xiaohua Zhai, and Neil Houlsby.
+\newblock {PaLI-Gemma}: A versatile 3b vlm for transfer.
+\newblock \emph{arXiv preprint arXiv:2407.07726}, 2024.
+
+\bibitem[Bricken et~al.(2023)Bricken, Templeton, Batson, Chen, Jermyn, Conerly,
+  Turner, Anil, Denison, Askell, et~al.]{bricken2023monosemanticity}
+Trenton Bricken, Adly Templeton, Joshua Batson, Brian Chen, Adam Jermyn, Tom
+  Conerly, Nick Turner, Cem Anil, Carson Denison, Amanda Askell, et~al.
+\newblock Towards monosemanticity: Decomposing language models with dictionary
+  learning.
+\newblock \emph{Transformer Circuits Thread}, 2023.
+
+\bibitem[Bussmann et~al.(2024)Bussmann, Leask, and
+  Nanda]{bussmann2024batchtopk}
+Bart Bussmann, Patrick Leask, and Neel Nanda.
+\newblock {BatchTopK} sparse autoencoders.
+\newblock \emph{arXiv preprint arXiv:2412.06410}, 2024.
+
+\bibitem[Chen et~al.(2025)]{judgelrm2025}
+Fanqi Chen et~al.
+\newblock {JudgeLRM}: Large reasoning models as a judge.
+\newblock \emph{arXiv preprint arXiv:2504.00050}, 2025.
+
+\bibitem[Cunningham et~al.(2024)Cunningham, Ewart, Riggs, Huben, and
+  Sharkey]{cunningham2023sparse}
+Hoagy Cunningham, Aidan Ewart, Logan Riggs, Robert Huben, and Lee Sharkey.
+\newblock Sparse autoencoders find highly interpretable features in language
+  models.
+\newblock In \emph{ICLR}, 2024.
+
+\bibitem[Gerych et~al.(2024)]{bendvlm2024}
+Walter Gerych et~al.
+\newblock {BendVLM}: Test-time debiasing of vision-language embeddings.
+\newblock In \emph{NeurIPS}, 2024.
+
+\bibitem[Holstege et~al.(2025)Holstege, Ravfogel, and
+  Wouters]{holstege2025splince}
+Floris Holstege, Shauli Ravfogel, and Bram Wouters.
+\newblock Preserving task-relevant information under linear concept removal.
+\newblock \emph{arXiv preprint arXiv:2506.10703}, 2025.
+
+\bibitem[Joseph et~al.(2025)]{joseph2025steering}
+Sonia Joseph et~al.
+\newblock Steering {CLIP}'s vision transformer with sparse autoencoders.
+\newblock In \emph{MIV Workshop at CVPR}, 2025.
+
+\bibitem[Jung et~al.(2024)Jung, Jang, and Wang]{sfid2024}
+Hoin Jung, Taeuk Jang, and Xiaoqian Wang.
+\newblock A unified debiasing approach for vision-language models across
+  modalities and tasks.
+\newblock In \emph{NeurIPS}, 2024.
+
+\bibitem[K{\"a}rkk{\"a}inen and Joo(2021)]{karkkainen2021fairface}
+Kimmo K{\"a}rkk{\"a}inen and Jungseock Joo.
+\newblock {FairFace}: Face attribute dataset for balanced race, gender, and age
+  for bias measurement and mitigation.
+\newblock In \emph{WACV}, 2021.
+
+\bibitem[Karvonen et~al.(2025)]{karvonen2025saebench}
+Adam Karvonen et~al.
+\newblock {SAEBench}: A comprehensive benchmark for sparse autoencoders in
+  language model interpretability.
+\newblock In \emph{ICML}, 2025.
+
+\bibitem[Molahasani et~al.(2025)]{prism2025}
+Majid Molahasani et~al.
+\newblock {PRISM}: Reducing spurious implicit biases in vision-language models
+  with {LLM}-guided embedding projection.
+\newblock In \emph{ICCV}, 2025.
+
+\bibitem[Pach et~al.(2025)]{pach2025saes}
+Mateusz Pach et~al.
+\newblock Sparse autoencoders learn monosemantic features in vision-language
+  models.
+\newblock \emph{arXiv preprint arXiv:2504.02821}, 2025.
+
+\bibitem[Sasse et~al.(2024)Sasse, Chen, Pond, Bitterman, and
+  Osborne]{sasse2024debias}
+Kuleen Sasse, Shan Chen, Jackson Pond, Danielle Bitterman, and John Osborne.
+\newblock {debiaSAE}: Benchmarking and mitigating vision-language model bias.
+\newblock \emph{arXiv preprint arXiv:2410.13146}, 2024.
+
+\bibitem[Stevens et~al.(2025)]{stevens2025interpretable}
+Samuel Stevens et~al.
+\newblock Interpretable and testable vision features via sparse autoencoders.
+\newblock \emph{arXiv preprint arXiv:2502.06755}, 2025.
+
+\bibitem[Wang et~al.(2024)Wang, Bai, Tan, Wang, Fan, Bai, Chen,
+  et~al.]{wang2024qwen2vl}
+Peng Wang, Shuai Bai, Sinan Tan, Shijie Wang, Zhihao Fan, Jinze Bai, Keqin
+  Chen, et~al.
+\newblock Qwen2-vl: Enhancing vision-language model's perception of the world
+  at any resolution.
+\newblock \emph{arXiv preprint arXiv:2409.12191}, 2024.
+
+\bibitem[Yang et~al.(2025)]{yang2025qwen3}
+An~Yang et~al.
+\newblock Qwen3 technical report.
+\newblock \emph{arXiv preprint arXiv:2505.09388}, 2025.
+
+\bibitem[Zaigrajew et~al.(2025)]{zaigrajew2025matryoshka}
+Miko{\l}aj Zaigrajew et~al.
+\newblock Interpreting {CLIP} with hierarchical sparse autoencoders.
+\newblock In \emph{ICML}, 2025.
+
+\bibitem[Zhang et~al.(2025)Zhang, Guo, and Kankanhalli]{zhang2025joint}
+Haoyu Zhang, Yangyang Guo, and Mohan Kankanhalli.
+\newblock Joint vision-language social bias removal for {CLIP}.
+\newblock In \emph{CVPR}, 2025.
+
+\bibitem[Zhang et~al.(2020)Zhang, Kishore, Wu, Weinberger, and
+  Artzi]{zhang2020bertscore}
+Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian~Q Weinberger, and Yoav Artzi.
+\newblock {BERTScore}: Evaluating text generation with {BERT}.
+\newblock In \emph{ICLR}, 2020.
+
+\bibitem[Zhao et~al.(2017)Zhao, Wang, Yatskar, Ordonez, and Chang]{zhao2017men}
+Jieyu Zhao, Tianlu Wang, Mark Yatskar, Vicente Ordonez, and Kai-Wei Chang.
+\newblock Men also like shopping: Reducing gender bias amplification using
+  corpus-level constraints.
+\newblock In \emph{EMNLP}, 2017.
+
+\end{thebibliography}
